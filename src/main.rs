@@ -6,6 +6,92 @@ use std::io::Read;
 use anyhow::Result;
 use byteorder::{ByteOrder, LE};
 
+#[derive(Debug)]
+struct Header {
+  // offset: 0x00
+  magic: [u8; 4], // "BND4"
+  _unused: [u8; 5],
+  big_endian: bool, // u8
+  bit_big_endian: bool, // u8
+  _unused2: [u8; 1],
+  file_count: u32,
+  // offset: 0x10
+  header_size: u64,
+  version: String, // [u8; 8], ascii
+  // offset: 0x20
+  file_header_size: u64,
+  _unused3: [u8; 8],
+  // offset: 0x30
+  unicode: bool, // u8
+  raw_format: u8,
+  extended: u8,
+  _unused4: [u8; 13],
+  // offset: 0x40
+}
+
+impl Header {
+  const SIZE: usize = 0x40;
+
+  pub fn new() -> Self {
+    Self {
+      magic: b"BND4".clone(),
+      _unused: [0; 5],
+      big_endian: false,
+      bit_big_endian: true,
+      _unused2: [0; 1],
+      file_count: 0,
+      header_size: Self::SIZE as u64,
+      version: String::new(),
+      file_header_size: 0,
+      _unused3: [0; 8],
+      unicode: true,
+      raw_format: 0,
+      extended: 0,
+      _unused4: [0; 13],
+    }
+  }
+
+  pub fn from_bytes(data: &[u8]) -> Self {
+    let mut header = Self::new();
+    header.magic.copy_from_slice(&data[0..4]);
+    header._unused.copy_from_slice(&data[4..9]);
+    header.big_endian = data[9] != 0;
+    header.bit_big_endian = data[10] != 0;
+    header._unused2.copy_from_slice(&data[11..12]);
+    header.file_count = LE::read_u32(&data[12..16]);
+    header.header_size = LE::read_u64(&data[16..24]);
+    header.version = String::from_utf8_lossy(&data[24..32]).to_string();
+    header.file_header_size = LE::read_u64(&data[32..40]);
+    header._unused3.copy_from_slice(&data[40..48]);
+    header.unicode = data[48] != 0;
+    header.raw_format = data[49];
+    header.extended = data[50];
+    header._unused4.copy_from_slice(&data[51..64]);
+    header
+  }
+
+  pub fn to_bytes(&self) -> Vec<u8> {
+    let mut data = Vec::with_capacity(Self::SIZE);
+    data.extend_from_slice(&self.magic);
+    data.extend_from_slice(&self._unused);
+    data.push(self.big_endian as u8);
+    data.push(self.bit_big_endian as u8);
+    data.extend_from_slice(&self._unused2);
+    data.extend_from_slice(&self.file_count.to_le_bytes());
+    data.extend_from_slice(&self.header_size.to_le_bytes());
+    let mut version = self.version.as_bytes().to_vec();
+    version.resize(8, 0x30);
+    data.extend_from_slice(&version);
+    data.extend_from_slice(&self.file_header_size.to_le_bytes());
+    data.extend_from_slice(&self._unused3);
+    data.push(self.unicode as u8);
+    data.push(self.raw_format);
+    data.push(self.extended);
+    data.extend_from_slice(&self._unused4);
+    data
+  }
+}
+
 struct SaveFile {
   header: [u8; Self::HEADER_LEN],
   data: [Vec<u8>; Self::SLOT_COUNT],
@@ -72,6 +158,27 @@ impl SaveFile {
     Ok(save)
   }
 
+  fn save_to_memory(&self) -> Vec<u8> {
+    let mut data = Vec::with_capacity(Self::HEADER_LEN + Self::SLOT_COUNT * (Self::SLOT_CRC_LEN + Self::SLOT_LEN) + Self::SLOT_CRC_LEN + Self::SLOT_BASE_LEN + Self::TAIL_LEN);
+    data.extend_from_slice(&self.header);
+    for i in 0..Self::SLOT_COUNT {
+      let slot = &self.data[i];
+      let crc = hex_digest(slot);
+      data.extend_from_slice(&hex::decode(crc).unwrap());
+      data.extend_from_slice(slot);
+    }
+    let base = &self.base;
+    let crc = hex_digest(base);
+    data.extend_from_slice(&hex::decode(crc).unwrap());
+    data.extend_from_slice(base);
+    data.extend_from_slice(&self.tail);
+    data
+  }
+
+  fn parse_header(&self) -> Header {
+    Header::from_bytes(&self.header)
+  }
+
   fn get_steam_id(&self) -> u64 {
     // https://github.com/Ariescyn/EldenRing-Save-Manager/blob/101c5b26ffc89210ad9d027e0ff8aecc7371758c/hexedit.py#L181
     // f.seek(26215348)  # start address of steamID
@@ -126,6 +233,10 @@ fn main() -> Result<()> {
   let mut data = Vec::new(); 
   file.read_to_end(&mut data)?;
   let save = SaveFile::load_from_memory(&data)?;
+  let data_out = save.save_to_memory();
+  assert_eq!(data, data_out);
+  let header = save.parse_header();
+  println!("header: {:?}", header);
   println!("steam_id: {}", save.get_steam_id());
   println!("names: {:?}", save.get_names());
   Ok(())
