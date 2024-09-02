@@ -1,3 +1,4 @@
 [workspace]
-members = ["crates/ER-Save-Editor", "crates/main", "crates/er-save", "crates/er-save-vm"]
+members = ["crates/main"]
+exclude = ["crates/ER-Save-Editor", "crates/ER-Save-Lib"]
 resolver = "2"
