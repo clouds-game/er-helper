@@ -1,0 +1,11 @@
+[package]
+name = "er-save"
+version = "0.0.22"
+edition = "2021"
+
+[dependencies]
+aes = "0.8.4"
+binary-reader = "0.4.5"
+bitflags = "2.6.0"
+encoding_rs = "0.8.34"
+md5 = "0.7.0"
