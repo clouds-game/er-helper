@@ -1,2 +1,6 @@
 /target
+/vendor
 Cargo.lock
+# pixi environments
+.pixi
+pixi.lock
