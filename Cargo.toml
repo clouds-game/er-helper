@@ -1,4 +1,4 @@
 [workspace]
-members = ["crates/main"]
+members = ["crates/main", "crates/tauri-app/src-tauri"]
 exclude = ["crates/ER-Save-Editor", "crates/ER-Save-Lib"]
 resolver = "2"

@@ -4,3 +4,4 @@ Cargo.lock
 # pixi environments
 .pixi
 pixi.lock
+yarn.lock
