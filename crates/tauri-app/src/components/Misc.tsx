@@ -33,3 +33,18 @@ export const NumberInfo = defineComponent<{
   name: "NumberInfo",
   props: ["value", "title"]
 })
+
+export const NumberInfoBanner = defineComponent<{
+  value: number,
+  prefix_text: string,
+  suffix_text: string,
+}>((props) => {
+  return () => <div class="text-center bg-gray m-1 p-3">
+    {props.prefix_text}
+    <span class="text-2xl text-red">{props.value}</span>
+    {props.suffix_text}
+  </div>
+}, {
+  name: "NumberInfoBanner",
+  props: ["value", "prefix_text", "suffix_text"]
+})
