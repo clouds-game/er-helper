@@ -11,7 +11,7 @@ export const PlayerCard = defineComponent<{
       <img src="https://via.placeholder.com/80" alt="player avatar" class="rounded-full" />
     </div>
     <div class="flex flex-col justify-around flex-auto ml-2">
-      <div class="flex justify-between"><span>Player: {props.nickname}</span> <span class="bg-gray">Steam ID: {props.steam_id}</span></div>
+      <div class="flex justify-between"><span class="text-2xl">{props.nickname}</span> <span class="text-sm">Steam ID: {props.steam_id}</span></div>
       <div class="flex justify-between"><span>Game: {props.game_name}</span></div>
       <div class="flex justify-between"><span>Duration: {props.duration}</span> <button>switch</button></div>
     </div>

@@ -1,4 +1,4 @@
-use std::sync::Mutex;
+use std::{path::Path, sync::Mutex};
 
 #[derive(Default)]
 struct MyState {
@@ -58,7 +58,8 @@ async fn get_player_info(state: tauri::State<'_, MyState>, selected: Option<Stri
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
+pub fn run<P: AsRef<Path>>(path: P) {
+  println!("running on file: {}", path.as_ref().display());
   tauri::Builder::default()
     .plugin(tauri_plugin_shell::init())
     .manage(MyState::new())
