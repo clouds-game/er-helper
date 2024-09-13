@@ -1,10 +1,15 @@
 <script setup lang="ts">
 // This starter template is using Vue 3 <script setup> SFCs
 // Check out https://vuejs.org/api/sfc-script-setup.html#script-setup
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import { PlayerCard, NumberInfo, NumberInfoBanner } from './components/Misc'
 import { invoke } from '@tauri-apps/api/core';
 
+const metadata = ref({
+  exists: false,
+  last_modified: 0,
+  size: 0,
+})
 const basic_names = ref({
   nickname: 'LOADING...',
   game_name: '',
@@ -18,16 +23,32 @@ const basic_number = ref({
   place: 0,
   death: 0,
 })
+const time = ref({
+  current: new Date(),
+  latest: new Date(0),
+})
 
 onMounted(async () => {
+  metadata.value = await invoke("get_metadata")
   basic_names.value = await invoke("get_basic_info")
   basic_number.value = await invoke("get_player_info")
+  time.value.current = new Date(metadata.value.last_modified * 1000)
+  console.log(time.value.current)
+})
+
+watch(() => metadata.value.last_modified, () => {
+  time.value.latest = new Date(metadata.value.last_modified * 1000)
 })
 
 </script>
 
 <template>
   <div class="m-1 grid grid-cols-4">
+    <div
+      class="col-span-4 text-center"
+      :class="{'bg-blue': time.current.getTime() === time.latest.getTime(), 'bg-yellow': time.current.getTime() !== time.latest.getTime()}"
+      v-if="time.latest"
+    >update at {{ time.latest.toISOString() }}</div>
     <div class="col-span-4">
       <PlayerCard :nickname="basic_names.nickname" :game_name="basic_names.game_name" :duration="basic_names.duration" :steam_id="basic_names.steam_id" />
     </div>

@@ -1,15 +1,15 @@
-use std::{path::Path, sync::Mutex};
+pub mod sync;
+pub mod save;
 
-#[derive(Default)]
-struct MyState {
-  selected: Mutex<String>,
-}
-impl MyState {
-  pub fn new() -> Self {
-    Self {
-      selected: Mutex::new("miao".to_string())
-    }
-  }
+use std::{path::Path, sync::Arc};
+
+use sync::{Metadata, MyState};
+
+use anyhow::Result;
+
+#[tauri::command]
+async fn get_metadata(state: tauri::State<'_, Arc<MyState>>) -> Result<Metadata, String> {
+  Ok(state.get_metadata())
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -21,14 +21,8 @@ pub struct BasicInfo {
 }
 
 #[tauri::command]
-async fn get_basic_info(state: tauri::State<'_, MyState>) -> Result<BasicInfo, String> {
-  let selected_name = state.selected.lock().unwrap().clone();
-  Ok(BasicInfo {
-    nickname: "hello".to_string(),
-    game_name: selected_name,
-    duration: 100_000,
-    steam_id: "AABBCDDD".to_string(),
-  })
+async fn get_basic_info(state: tauri::State<'_, Arc<MyState>>) -> Result<BasicInfo, String> {
+  state.get_basic_info().map_err(|e| format!("state.get_basic_info: {}", e))
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -41,29 +35,24 @@ pub struct BasicPlayerInfo {
 }
 
 #[tauri::command]
-async fn get_player_info(state: tauri::State<'_, MyState>, selected: Option<String>) -> Result<BasicPlayerInfo, String> {
-  let current = if let Some(selected) = selected {
-    *state.selected.lock().unwrap() = selected.clone();
-    selected
-  } else {
-    state.selected.lock().unwrap().clone()
-  };
-  Ok(BasicPlayerInfo {
-    level: 900,
-    rune: 300_000,
-    boss: 99,
-    place: 250,
-    death: 1500,
-  })
+async fn get_player_info(state: tauri::State<'_, Arc<MyState>>, selected: Option<String>) -> Result<BasicPlayerInfo, String> {
+  let selected = selected.or_else(|| state.get_selected()).ok_or("no selected name")?;
+  state.get_player_info(selected).map_err(|e| format!("state.get_player_info: {}", e))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run<P: AsRef<Path>>(path: P) {
   println!("running on file: {}", path.as_ref().display());
+  let my_state = Arc::new(MyState::new(path.as_ref().to_path_buf()));
+  std::thread::spawn({
+    let state = my_state.clone();
+    move || sync::background(state)
+  });
   tauri::Builder::default()
     .plugin(tauri_plugin_shell::init())
-    .manage(MyState::new())
+    .manage(my_state)
     .invoke_handler(tauri::generate_handler![
+      get_metadata,
       get_basic_info,
       get_player_info,
     ])
