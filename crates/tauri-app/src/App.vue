@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // This starter template is using Vue 3 <script setup> SFCs
 // Check out https://vuejs.org/api/sfc-script-setup.html#script-setup
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, onUnmounted } from 'vue';
 import { Banner, PlayerCard, NumberInfo, NumberInfoBanner } from './components/Misc'
 import * as timeago from 'timeago.js';
 import { useState } from './lib/state';
@@ -10,9 +10,17 @@ import { useI18n } from 'vue-i18n';
 const { t, locale } = useI18n()
 const state = useState()
 
+let timer: number | undefined
 onMounted(async () => {
   state.update()
+  timer = setInterval(() => {
+    state.update()
+  }, 500)
   console.log(state.time.current)
+})
+
+onUnmounted(() => {
+  clearInterval(timer)
 })
 
 const timeago_locale = computed(() => {

@@ -23,6 +23,7 @@ export const useState = defineStore("state", () => {
     death: 0,
   })
   const time = ref({
+    queried: new Date(0),
     current: new Date(),
     latest: new Date(0),
   })
@@ -33,6 +34,7 @@ export const useState = defineStore("state", () => {
       basic_names.value = await invoke("get_basic_info")
       basic_number.value = await invoke("get_player_info")
       time.value.current = new Date(metadata.value.last_modified * 1000)
+      time.value.queried = new Date()
     } catch (e) {
       console.error(e)
     }
