@@ -26,6 +26,16 @@ export const messages = {
     },
   },
   ja: {
-
+    ui: {
+      loading: "読み込み中...",
+      runes: "ルーン",
+      boss: "ボス",
+      level: "レベル",
+      graces: "祝福",
+    },
+    message: {
+      death_times: "あなたは {0} 回死にました",
+      update_at: "最終更新日時 {0}",
+    },
   },
 }

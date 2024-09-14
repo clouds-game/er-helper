@@ -14,7 +14,12 @@ const i18n = {
     duration: "游戏时间",
     swtich: "切换角色",
   },
-  ja: {},
+  ja: {
+    steam_id: "Steam ID",
+    role_name: "役職",
+    duration: "ゲーム時間",
+    swtich: "役職を切り替える",
+  },
 }
 
 export const Banner = defineComponent<{
@@ -41,7 +46,7 @@ export const PlayerCard = defineComponent<{
   duration: number,
   steam_id: string,
 }>((props) => {
-  const { t: $t } = useI18n({ messages: i18n })
+  const { t: $t, locale } = useI18n({ messages: i18n })
   return () => <div class="flex">
     <div>
       <img src="https://via.placeholder.com/80" alt="player avatar" class="rounded-full" />
@@ -49,12 +54,15 @@ export const PlayerCard = defineComponent<{
     <div class="flex flex-col justify-around flex-auto ml-2">
       <div class="flex justify-between"><span class="text-2xl">{props.nickname}</span> <span class="text-sm">{ $t('steam_id') }: {props.steam_id}</span></div>
       <div class="flex justify-between"><span>{ $t('role_name') }: {props.role_name}</span></div>
-      <div class="flex justify-between"><span>{ $t('duration') }: {props.duration}</span> <button>{ $t('swtich') }</button></div>
+      <div class="flex justify-between">
+        <span>{ $t('duration') }: {props.duration}</span>
+        <span><button>{ $t('swtich') }</button><ButtonLanguage class="ml-1" current={locale.value} /></span>
+      </div>
     </div>
   </div>
 }, {
   name: "PlayerCard",
-  props: ["nickname", "role_name", "duration", "steam_id"]
+  props: ["nickname", "role_name", "duration", "steam_id"],
 })
 
 export const NumberInfo = defineComponent<{
@@ -81,5 +89,22 @@ export const NumberInfoBanner = defineComponent<{
   </div>
 }, {
   name: "NumberInfoBanner",
-  props: ["value", "text_keypath"]
+  props: ["value", "text_keypath"],
+})
+
+export const ButtonLanguage = defineComponent<{
+  current: "en" | "cn" | "ja",
+}>((props) => {
+  const i18n = useI18n()
+  const next_lang = (current: "en" | "cn" | "ja") => {
+    switch (current) {
+      case "en": return "cn"
+      case "cn": return "ja"
+      case "ja": return "en"
+    }
+  }
+  return () => <a href='#' onClick={() => {i18n.locale.value = next_lang(props.current)}}>{props.current}</a>
+}, {
+  name: "ButtonLanguage",
+  props: ["current"],
 })
