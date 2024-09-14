@@ -11,7 +11,7 @@ export const useState = defineStore("state", () => {
   })
   const basic_names = ref({
     nickname: 'LOADING...',
-    game_name: '',
+    role_name: '',
     duration: 0,
     steam_id: '',
   })

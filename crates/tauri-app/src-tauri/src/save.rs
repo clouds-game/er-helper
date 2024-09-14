@@ -86,7 +86,7 @@ impl MyState {
     let active = meta_info.get_active();
     Ok(crate::BasicInfo {
       nickname: "miao".to_string(),
-      game_name: active.name.to_string(),
+      role_name: active.name.to_string(),
       duration: active.duration as u64,
       steam_id: meta_info.steam_id.to_string(),
     })

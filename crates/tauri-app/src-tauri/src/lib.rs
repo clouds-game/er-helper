@@ -15,7 +15,7 @@ async fn get_metadata(state: tauri::State<'_, Arc<MyState>>) -> Result<Metadata,
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct BasicInfo {
   pub nickname: String,
-  pub game_name: String,
+  pub role_name: String,
   pub duration: u64,
   pub steam_id: String,
 }

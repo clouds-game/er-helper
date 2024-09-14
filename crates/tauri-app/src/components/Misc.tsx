@@ -1,9 +1,26 @@
 import { defineComponent } from "vue"
+import { useI18n } from "vue-i18n"
+
+const i18n = {
+  en: {
+    steam_id: "Steam ID",
+    role_name: "Role Name",
+    duration: "Duration",
+    swtich: "Switch Role",
+  },
+  cn: {
+    steam_id: "Steam ID",
+    role_name: "游戏名",
+    duration: "游戏时间",
+    swtich: "切换角色",
+  },
+  ja: {},
+}
 
 export const Banner = defineComponent<{
   content?: string,
   level: "warn" | "info" | "error",
-}>((props, i) => {
+}>((props, { slots }) => {
   const style = {
     warn: "bg-yellow-200",
     info: "bg-blue-200",
@@ -11,7 +28,7 @@ export const Banner = defineComponent<{
   }
   return () => <div class={`text-center mb-1 ${style[props.level]}`}>
     { props.content }
-    { i.slots.default && i.slots.default() }
+    { slots.default && slots.default() }
   </div>
 }, {
   name: "Banner",
@@ -20,23 +37,24 @@ export const Banner = defineComponent<{
 
 export const PlayerCard = defineComponent<{
   nickname: string,
-  game_name: string,
+  role_name: string,
   duration: number,
   steam_id: string,
 }>((props) => {
+  const { t: $t } = useI18n({ messages: i18n })
   return () => <div class="flex">
     <div>
       <img src="https://via.placeholder.com/80" alt="player avatar" class="rounded-full" />
     </div>
     <div class="flex flex-col justify-around flex-auto ml-2">
-      <div class="flex justify-between"><span class="text-2xl">{props.nickname}</span> <span class="text-sm">Steam ID: {props.steam_id}</span></div>
-      <div class="flex justify-between"><span>Game: {props.game_name}</span></div>
-      <div class="flex justify-between"><span>Duration: {props.duration}</span> <button>switch</button></div>
+      <div class="flex justify-between"><span class="text-2xl">{props.nickname}</span> <span class="text-sm">{ $t('steam_id') }: {props.steam_id}</span></div>
+      <div class="flex justify-between"><span>{ $t('role_name') }: {props.role_name}</span></div>
+      <div class="flex justify-between"><span>{ $t('duration') }: {props.duration}</span> <button>{ $t('swtich') }</button></div>
     </div>
   </div>
 }, {
   name: "PlayerCard",
-  props: ["nickname", "game_name", "duration", "steam_id"]
+  props: ["nickname", "role_name", "duration", "steam_id"]
 })
 
 export const NumberInfo = defineComponent<{
@@ -54,15 +72,14 @@ export const NumberInfo = defineComponent<{
 
 export const NumberInfoBanner = defineComponent<{
   value: number,
-  prefix_text: string,
-  suffix_text: string,
+  text_keypath: string,
 }>((props) => {
   return () => <div class="text-center bg-gray m-1 p-3">
-    {props.prefix_text}
-    <span class="text-2xl text-red">{props.value}</span>
-    {props.suffix_text}
+    <i18n-t keypath={props.text_keypath} plural={props.value}>
+      <span class="text-2xl text-red">{props.value}</span>
+    </i18n-t>
   </div>
 }, {
   name: "NumberInfoBanner",
-  props: ["value", "prefix_text", "suffix_text"]
+  props: ["value", "text_keypath"]
 })
