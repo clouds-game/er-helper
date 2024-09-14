@@ -47,7 +47,7 @@ const latest_time_str = computed(() => {
     <NumberInfo :title="t('ui.level')" :value="state.basic_number.level" />
     <NumberInfo :title="t('ui.runes')" :value="state.basic_number.rune" />
     <NumberInfo :title="t('ui.boss')" :value="state.basic_number.boss" />
-    <NumberInfo :title="t('ui.graces')" :value="state.basic_number.place" />
+    <NumberInfo :title="t('ui.graces')" :value="state.basic_number.grace" />
     <NumberInfoBanner class="col-span-4" text_keypath="message.death_times" :value="state.basic_number.death" />
   </div>
 </template>

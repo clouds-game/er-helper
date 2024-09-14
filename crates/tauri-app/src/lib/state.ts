@@ -19,7 +19,7 @@ export const useState = defineStore("state", () => {
     level: 0,
     rune: 0,
     boss: 0,
-    place: 0,
+    grace: 0,
     death: 0,
   })
   const time = ref({

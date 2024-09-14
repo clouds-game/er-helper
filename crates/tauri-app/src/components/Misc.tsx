@@ -10,8 +10,8 @@ const i18n = {
   },
   cn: {
     steam_id: "Steam ID",
-    role_name: "游戏名",
-    duration: "游戏时间",
+    role_name: "当前角色",
+    duration: "游戏时长",
     swtich: "切换角色",
   },
   ja: {

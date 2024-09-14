@@ -15,13 +15,13 @@ export const messages = {
   cn: {
     ui: {
       loading: "加载中...",
-      runes: "卢恩",
-      boss: "Boss",
+      runes: "持有卢恩",
+      boss: "Boss讨伐数",
       level: "等级",
-      graces: "赐福",
+      graces: "已解锁赐福点",
     },
     message: {
-      death_times: "你已经死了 {0} 次",
+      death_times: "你一共死亡 {0} 次",
       update_at: "最后更新于 {0}",
     },
   },

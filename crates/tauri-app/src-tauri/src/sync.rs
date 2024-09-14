@@ -1,4 +1,4 @@
-use std::{path::PathBuf, sync::{atomic::{AtomicU64, Ordering}, Mutex}};
+use std::{path::PathBuf, sync::{atomic::{AtomicU64, AtomicUsize, Ordering}, Mutex}};
 
 use crate::Result;
 
@@ -14,7 +14,7 @@ pub struct Metadata {
 pub struct MyState {
   pub save_path: PathBuf,
   pub metadata: Mutex<Metadata>,
-  pub selected: Mutex<Option<String>>,
+  pub selected: AtomicUsize,
   pub save: Mutex<Option<er_save_lib::Save>>,
   pub loaded_time: AtomicU64,
 }
@@ -23,6 +23,7 @@ impl MyState {
   pub fn new(path: PathBuf) -> Self {
     Self {
       save_path: path,
+      selected: AtomicUsize::new(usize::MAX),
       ..Default::default()
     }
   }
