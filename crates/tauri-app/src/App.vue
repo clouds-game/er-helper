@@ -1,62 +1,37 @@
 <script setup lang="ts">
 // This starter template is using Vue 3 <script setup> SFCs
 // Check out https://vuejs.org/api/sfc-script-setup.html#script-setup
-import { onMounted, ref, watch } from 'vue';
-import { PlayerCard, NumberInfo, NumberInfoBanner } from './components/Misc'
-import { invoke } from '@tauri-apps/api/core';
+import { computed, onMounted } from 'vue';
+import { Banner, PlayerCard, NumberInfo, NumberInfoBanner } from './components/Misc'
+import * as timeago from 'timeago.js';
+import { useState } from './lib/state';
 
-const metadata = ref({
-  exists: false,
-  last_modified: 0,
-  size: 0,
-})
-const basic_names = ref({
-  nickname: 'LOADING...',
-  game_name: '',
-  duration: 0,
-  steam_id: '',
-})
-const basic_number = ref({
-  level: 0,
-  rune: 0,
-  boss: 0,
-  place: 0,
-  death: 0,
-})
-const time = ref({
-  current: new Date(),
-  latest: new Date(0),
-})
+const state = useState()
 
 onMounted(async () => {
-  metadata.value = await invoke("get_metadata")
-  basic_names.value = await invoke("get_basic_info")
-  basic_number.value = await invoke("get_player_info")
-  time.value.current = new Date(metadata.value.last_modified * 1000)
-  console.log(time.value.current)
+  state.update()
+  console.log(state.time.current)
 })
 
-watch(() => metadata.value.last_modified, () => {
-  time.value.latest = new Date(metadata.value.last_modified * 1000)
+const latest_time_str = computed(() => {
+  return timeago.format(state.time.latest)
 })
 
 </script>
 
 <template>
   <div class="m-1 grid grid-cols-4">
-    <div
-      class="col-span-4 text-center"
-      :class="{'bg-blue': time.current.getTime() === time.latest.getTime(), 'bg-yellow': time.current.getTime() !== time.latest.getTime()}"
-      v-if="time.latest"
-    >update at {{ time.latest.toISOString() }}</div>
+    <Banner class="col-span-4" :level="state.time.current.getTime() === state.time.latest.getTime() ? 'info' : 'warn'" v-if="state.time.latest">
+      updated {{ latest_time_str }}
+    </Banner>
     <div class="col-span-4">
-      <PlayerCard :nickname="basic_names.nickname" :game_name="basic_names.game_name" :duration="basic_names.duration" :steam_id="basic_names.steam_id" />
+      <PlayerCard :nickname="state.basic_names.nickname" :game_name="state.basic_names.game_name" :duration="state.basic_names.duration" :steam_id="state.basic_names.steam_id" />
     </div>
-    <NumberInfo title="Level" :value="basic_number.level" />
-    <NumberInfo title="Rune" :value="basic_number.rune" />
-    <NumberInfo title="Boss" :value="basic_number.boss" />
-    <NumberInfo title="Place" :value="basic_number.place" />
-    <NumberInfoBanner class="col-span-4" prefix_text="You died for " suffix_text=" times." :value="basic_number.death" />
+    <NumberInfo title="Level" :value="state.basic_number.level" />
+    <NumberInfo title="Rune" :value="state.basic_number.rune" />
+    <NumberInfo title="Boss" :value="state.basic_number.boss" />
+    <NumberInfo title="Place" :value="state.basic_number.place" />
+    <NumberInfoBanner class="col-span-4" prefix_text="You died for " suffix_text=" times." :value="state.basic_number.death" />
   </div>
 </template>
 

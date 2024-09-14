@@ -1,5 +1,23 @@
 import { defineComponent } from "vue"
 
+export const Banner = defineComponent<{
+  content?: string,
+  level: "warn" | "info" | "error",
+}>((props, i) => {
+  const style = {
+    warn: "bg-yellow-200",
+    info: "bg-blue-200",
+    error: "bg-red-200",
+  }
+  return () => <div class={`text-center mb-1 ${style[props.level]}`}>
+    { props.content }
+    { i.slots.default && i.slots.default() }
+  </div>
+}, {
+  name: "Banner",
+  props: ['content', 'level'],
+})
+
 export const PlayerCard = defineComponent<{
   nickname: string,
   game_name: string,
