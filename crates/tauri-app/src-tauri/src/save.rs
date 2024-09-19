@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use er_save_lib::{save::{user_data_10::Profile, user_data_x::UserDataX}, Save};
 
-use crate::{db::GRACES, sync::MyState, Result};
+use crate::{db::{BOSS, GRACES}, sync::MyState, Result};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct MetaInfo {
@@ -60,7 +60,7 @@ macro_rules! check_eq {
 pub struct Events {
   pub events: Vec<u8>,
   pub graces: HashMap<u32, bool>,
-  // pub graces: pl::DataFrame,
+  pub bosses: HashMap<u32, bool>,
 }
 
 impl TryFrom<&UserDataX> for Events {
@@ -74,8 +74,13 @@ impl TryFrom<&UserDataX> for Events {
       let flag = events[i.offset as usize] & i.bit_mask != 0;
       graces.insert(i.id, flag);
     }
+    let mut bosses = HashMap::new();
+    for i in BOSS.iter() {
+      let flag = events[i.offset as usize] & i.bit_mask != 0;
+      bosses.insert(i.id, flag);
+    }
     Ok(Self {
-      events, graces,
+      events, graces, bosses,
     })
   }
 }
@@ -86,7 +91,7 @@ impl From<(&Profile, &UserDataX)> for PlayerMetaInfo {
 
     let events = Events::try_from(userdata).unwrap();
     let graces = events.graces.iter().filter(|(_, &v)| v).count() as u32;
-    // info!("graces: {}", graces);
+    let boss = events.bosses.iter().filter(|(_, &v)| v).count() as u32;
 
     Self {
       active: false,
@@ -98,7 +103,7 @@ impl From<(&Profile, &UserDataX)> for PlayerMetaInfo {
       map_id: u32::from_le_bytes(profile.map_id),
       death: userdata.total_deaths_count,
       last_grace_id: userdata.last_rested_grace,
-      boss: 0, // userdata.event_flags,
+      boss,
       graces,
     }
   }
