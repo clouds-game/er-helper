@@ -1,6 +1,10 @@
-use er_save_lib::{save::{user_data_10::Profile, user_data_x::UserDataX}, Save};
+use std::collections::HashMap;
 
-use crate::{sync::MyState, Result};
+use er_save_lib::{api::event_flags::EventFlagsApi, save::{user_data_10::Profile, user_data_x::UserDataX}, Save, SaveApi};
+use polars::prelude::{IntoLazy, Literal, NamedFrom as _};
+use crate::db::pl;
+
+use crate::{db::GRACES, sync::MyState, Result};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct MetaInfo {
@@ -55,9 +59,42 @@ macro_rules! check_eq {
   };
 }
 
+pub struct Events {
+  pub events: pl::DataFrame,
+  pub graces: pl::DataFrame,
+}
+
+impl TryFrom<&UserDataX> for Events {
+  type Error = anyhow::Error;
+  fn try_from(userdata: &UserDataX) -> Result<Self> {
+    let events = pl::df!{
+      "idx" => 0..userdata.event_flags.len() as u32,
+      "event_flags" => &userdata.event_flags,
+    }?;
+    // println!("events: {}", events);
+    let graces = GRACES.clone().lazy().join(
+      events.clone().lazy(),
+      [pl::col("offset")],
+      [pl::col("idx")],
+      pl::JoinType::Left.into()
+    ).with_column(
+      pl::col("event_flags").and(pl::col("bit_mask")).neq(0.lit()).alias("flag")
+    ).collect()?;
+    // println!("graces: {}", graces);
+    Ok(Self {
+      events, graces,
+    })
+  }
+}
+
 impl From<(&Profile, &UserDataX)> for PlayerMetaInfo {
   fn from((profile, userdata): (&Profile, &UserDataX)) -> Self {
     check_eq!(profile.runes_memory, userdata.player_game_data.runes_memory);
+
+    let events = Events::try_from(userdata).unwrap();
+    let graces = events.graces.column("flag").unwrap().sum::<u32>().unwrap();
+    info!("graces: {}", graces);
+
     Self {
       active: false,
       name: profile.character_name.clone(),
@@ -69,7 +106,7 @@ impl From<(&Profile, &UserDataX)> for PlayerMetaInfo {
       death: userdata.total_deaths_count,
       last_grace_id: userdata.last_rested_grace,
       boss: 0, // userdata.event_flags,
-      graces: 0,
+      graces,
     }
   }
 }

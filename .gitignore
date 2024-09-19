@@ -5,3 +5,5 @@ Cargo.lock
 .pixi
 pixi.lock
 yarn.lock
+
+__pycache__

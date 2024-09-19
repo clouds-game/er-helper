@@ -1,5 +1,6 @@
 #[macro_use] extern crate tracing;
 
+pub mod db;
 pub mod sync;
 pub mod save;
 
