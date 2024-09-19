@@ -15,7 +15,7 @@ crate-type = ["lib", "cdylib", "staticlib"]
 tauri-build = { version = "2.0.0-rc", features = [] }
 
 [dependencies]
-er-save-lib = { path = "../../ER-Save-Lib" }
+er-save-lib = { path = "../../libs/ER-Save-Lib" }
 
 anyhow = "1.0.88"
 lazy_static = "1.5.0"

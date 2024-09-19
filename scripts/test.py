@@ -5,7 +5,7 @@ import re
 
 enter_project_root()
 
-ASSET_DIR = "crates/tauri-app/src-tauri/assets";
+ASSET_DIR = "tauri-app/src-tauri/assets"
 
 # %%
 def regex_format(template: str, **kwargs: dict[str, str]):

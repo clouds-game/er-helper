@@ -1,5 +1,7 @@
 /target
-/vendor
+/vendor/*
+!/vendor/ER-Save-Lib
+/libs/ER-Save-Lib
 Cargo.lock
 # pixi environments
 .pixi
@@ -8,3 +10,4 @@ yarn.lock
 
 __pycache__
 **/assets/*.out.json
+**/assets/*.in.rs
