@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 
-use er_save_lib::{api::event_flags::EventFlagsApi, save::{user_data_10::Profile, user_data_x::UserDataX}, Save, SaveApi};
-use polars::prelude::{IntoLazy, Literal, NamedFrom as _};
-use crate::db::pl;
+use er_save_lib::{save::{user_data_10::Profile, user_data_x::UserDataX}, Save};
 
 use crate::{db::GRACES, sync::MyState, Result};
 
@@ -60,27 +58,22 @@ macro_rules! check_eq {
 }
 
 pub struct Events {
-  pub events: pl::DataFrame,
-  pub graces: pl::DataFrame,
+  pub events: Vec<u8>,
+  pub graces: HashMap<u32, bool>,
+  // pub graces: pl::DataFrame,
 }
 
 impl TryFrom<&UserDataX> for Events {
   type Error = anyhow::Error;
+
+  // #[instrument(skip(userdata))]
   fn try_from(userdata: &UserDataX) -> Result<Self> {
-    let events = pl::df!{
-      "idx" => 0..userdata.event_flags.len() as u32,
-      "event_flags" => &userdata.event_flags,
-    }?;
-    // println!("events: {}", events);
-    let graces = GRACES.clone().lazy().join(
-      events.clone().lazy(),
-      [pl::col("offset")],
-      [pl::col("idx")],
-      pl::JoinType::Left.into()
-    ).with_column(
-      pl::col("event_flags").and(pl::col("bit_mask")).neq(0.lit()).alias("flag")
-    ).collect()?;
-    // println!("graces: {}", graces);
+    let events = userdata.event_flags.clone();
+    let mut graces = HashMap::new();
+    for i in GRACES.iter() {
+      let flag = events[i.offset as usize] & i.bit_mask != 0;
+      graces.insert(i.id, flag);
+    }
     Ok(Self {
       events, graces,
     })
@@ -92,8 +85,8 @@ impl From<(&Profile, &UserDataX)> for PlayerMetaInfo {
     check_eq!(profile.runes_memory, userdata.player_game_data.runes_memory);
 
     let events = Events::try_from(userdata).unwrap();
-    let graces = events.graces.column("flag").unwrap().sum::<u32>().unwrap();
-    info!("graces: {}", graces);
+    let graces = events.graces.iter().filter(|(_, &v)| v).count() as u32;
+    // info!("graces: {}", graces);
 
     Self {
       active: false,

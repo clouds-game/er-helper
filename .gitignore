@@ -7,3 +7,4 @@ pixi.lock
 yarn.lock
 
 __pycache__
+**/assets/*.out.json

@@ -49,8 +49,7 @@ async fn get_player_info(state: tauri::State<'_, Arc<MyState>>, selected: Option
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run<P: AsRef<Path>>(path: P) {
-  tracing_subscriber::fmt().try_init().ok();
-  println!("running on file: {}", path.as_ref().display());
+  info!("running on file: {}", path.as_ref().display());
   let my_state = Arc::new(MyState::new(path.as_ref().to_path_buf()));
   std::thread::spawn({
     let state = my_state.clone();

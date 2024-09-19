@@ -21,5 +21,6 @@ df = df.with_columns(
   bit_mask = pl.lit(2).pow((7 - pl.col('block_idx') % 8)).cast(pl.UInt8),
 )
 df.group_by('block').len()
+df.write_json(f"{ASSET_DIR}/graces.out.json")
 
 # %%
