@@ -38,6 +38,16 @@ def load_config() -> dict:
   with open(curdir / "config.toml", "rb") as f:
     return tomllib.load(f)
 
+def setup_clr(dlls: list[str] = ["UnpackHelper", "SoulsFormats"]):
+  import pythonnet
+  import sys, pathlib
+  enter_project_root()
+  pythonnet.load("coreclr")
+  sys.path.append(str(pathlib.Path("libs/UnpackHelper/bin/Debug/net8.0").absolute()))
+  import clr
+  for dll in dlls:
+    clr.AddReference(dll)
+
 # %%
 from dataclasses import dataclass
 @dataclass

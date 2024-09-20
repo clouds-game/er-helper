@@ -3,15 +3,11 @@ from _common import *
 
 from dataclasses import dataclass
 import polars as pl
-import pythonnet
-import sys, pathlib
-enter_project_root()
+import pathlib
+
+setup_clr()
 logger = get_logger(__name__, filename=f'logs/unpack_{today_str()}.log')
-pythonnet.load("coreclr")
-sys.path.append(str(pathlib.Path("libs/UnpackHelper/bin/Debug/net8.0").absolute()))
-import clr
-for dll in ["UnpackHelper", "SoulsFormats"]:
-  clr.AddReference(dll)
+
 import SoulsFormats # type: ignore
 import UnpackHelper # type: ignore
 import System.IO # type: ignore
@@ -60,18 +56,24 @@ def unpack_bdt(path: str, dst_dir: str, *, file_headers: list[SoulsFormats.BHD5.
   if progress:
     import tqdm
     bar = tqdm.tqdm(total=total_bytes, unit='B', unit_scale=True, desc=tag)
+  result: list[int | None] = []
   for (f, r) in zip(file_headers, df.rows(named=True)):
+    result.append(None)
     if r['path'] is None:
       logger.warning(f"[{tag}] Unknown name {r['FileNameHash']}")
       continue
     target_path = pathlib.Path(f"{dst_dir}/{r['path']}")
     if target_path.exists():
       logger.info(f"[{tag}] Skipping {target_path}")
-      if progress:
-        bar.update(r['PaddedFileSize'])
+      if progress: bar.update(r['PaddedFileSize'])
+      try: result[-1] = target_path.stat().st_size
+      except: pass
       continue
     try:
       data = f.ReadFile(stream)
+      # actual_size = r['UnpaddedFileSize']
+      # if len(data) > actual_size and actual_size > 0:
+      #   data = data.Take(actual_size)
       size = len(data) # data.Length
     except Exception as e:
       logger.error(f"[{tag}] Failed to read {r['path']}")
@@ -84,8 +86,9 @@ def unpack_bdt(path: str, dst_dir: str, *, file_headers: list[SoulsFormats.BHD5.
       os.remove(target_path)
       raise e
     logger.info(f"[{tag}] {target_path} size={size} hash={r['SHAHash']}")
-    if progress:
-      bar.update(r['PaddedFileSize'])
+    if progress: bar.update(r['PaddedFileSize'])
+    result[-1] = size
+  return result
 
 # %%
 files = UnpackHelper.Helper.GetDictionary(game)
@@ -95,9 +98,32 @@ df_hash
 # %%
 for tag in tags:
   path = f"{src_dir}/{tag}.bhd"
+  if os.path.exists(f"logs/unpack_{tag}.csv"):
+    logger.warning(f"Skipping {path}, remove logs/unpack_{tag}.csv to force unpack")
+    continue
   logger.info(f"Unpacking {path}")
   df, file_headers = unpack_bhd(path, tag, hashes=df_hash)
   print(df)
-  unpack_bdt(path, dst_dir, file_headers=file_headers, df=df)
+  on_disk_size = unpack_bdt(path, dst_dir, file_headers=file_headers, df=df)
+  df = df.select(
+    pack = pl.lit(tag),
+    path = 'path',
+    size = 'PaddedFileSize',
+    actual_size = pl.col('UnpaddedFileSize').replace(0, None),
+    on_disk_size = pl.Series(values=on_disk_size),
+    checksum = 'SHAHash',
+    path_hash = 'FileNameHash',
+    offset = 'FileOffset',
+    aes_key = 'AESKey',
+  )
+  print(df)
+  df.write_csv(f"logs/unpack_{tag}.csv", quote_style="non_numeric")
+
+# %%
+df = pl.concat(pl.read_csv(f"logs/unpack_{tag}.csv", schema_overrides=dict(
+  size = pl.UInt64, actual_size = pl.UInt64, on_disk_size = pl.UInt64, offset = pl.UInt64,
+  path_hash = pl.UInt64, checksum = pl.String, aes_key = pl.String,
+)) for tag in tags)
+df.sort('path', nulls_last=True).write_parquet("scripts/res/unpack_stage1.parquet")
 
 # %%
