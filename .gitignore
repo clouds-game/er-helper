@@ -1,6 +1,8 @@
 /target
 /vendor/*
 !/vendor/ER-Save-Lib
+!/vendor/SoulsFormatsNEXT
+!/vendor/UXM-Selective-Unpack
 /libs/ER-Save-Lib
 Cargo.lock
 # pixi environments
@@ -11,3 +13,5 @@ yarn.lock
 __pycache__
 **/assets/*.out.json
 **/assets/*.in.rs
+
+.fake

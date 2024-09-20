@@ -15,6 +15,7 @@ ipykernel = ">=6.29.5,<6.30"
 pandas = ">=2.2.2,<3"
 pyarrow = ">=17.0.0,<18"
 polars = ">=1.7.1,<2"
+pythonnet = ">=3.0.3,<4"
 
 [pypi-dependencies]
 erdb = "*"

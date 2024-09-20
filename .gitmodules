@@ -1,3 +1,9 @@
 [submodule "vendor/ER-Save-Lib"]
 	path = vendor/ER-Save-Lib
 	url = https://github.com/ClayAmore/ER-Save-Lib
+[submodule "vendor/SoulsFormatsNEXT"]
+	path = vendor/SoulsFormatsNEXT
+	url = https://github.com/soulsmods/SoulsFormatsNEXT
+[submodule "vendor/UXM-Selective-Unpack"]
+	path = vendor/UXM-Selective-Unpack
+	url = https://github.com/Nordgaren/UXM-Selective-Unpack
