@@ -22,13 +22,13 @@ public class Helper {
 
   public static Dictionary<ulong, string> GetDictionary(SoulsFormats.BHD5.Game game, string? path = null) {
     path ??= game switch {
-      SoulsFormats.BHD5.Game.DarkSouls1 => "res/DarkSoulsDictionary.txt",
-      SoulsFormats.BHD5.Game.DarkSouls2 => "res/DarkSouls2Dictionary.txt",
-      SoulsFormats.BHD5.Game.DarkSouls3 => "res/DarkSouls3Dictionary.txt",
-      SoulsFormats.BHD5.Game.EldenRing => "res/EldenRingDictionary.txt",
+      SoulsFormats.BHD5.Game.DarkSouls1 => $"{OutputDir}/res/DarkSoulsDictionary.txt",
+      SoulsFormats.BHD5.Game.DarkSouls2 => $"{OutputDir}/res/DarkSouls2Dictionary.txt",
+      SoulsFormats.BHD5.Game.DarkSouls3 => $"{OutputDir}/res/DarkSouls3Dictionary.txt",
+      SoulsFormats.BHD5.Game.EldenRing => $"{OutputDir}/res/EldenRingDictionary.txt",
       _ => throw new ArgumentException("Game not supported", nameof(game)),
     };
-    string content = File.ReadAllText($"{OutputDir}/{path}");
+    string content = File.ReadAllText(path);
     return new UXM.ArchiveDictionary(content, game).hashes;
   }
 

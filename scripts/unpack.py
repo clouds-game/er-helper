@@ -16,53 +16,15 @@ import SoulsFormats # type: ignore
 import UnpackHelper # type: ignore
 import System.IO # type: ignore
 
-src_path = "/mnt/d/Steam/steamapps/common/ELDEN RING/Game"
-dst_dir = "/mnt/d/tmp/ER"
+config = load_config()
+src_dir = config['unpack']['src_dir']
+dst_dir = config['unpack']['stage1_dir']
 tags = ["Data0", "Data1", "Data2", "Data3", "DLC"]
 game = SoulsFormats.BHD5.Game.EldenRing
+logger.info(f"Unpacking {game} {tags} from {src_dir} to {dst_dir}")
+print(f"Unpacking {game} {tags} from {src_dir} to {dst_dir}")
 
 # %%
-@dataclass
-class Field:
-  name: str
-  type: str
-  collectable: bool
-  static: bool
-  public: bool
-  can_read: bool
-  can_write: bool
-
-  @staticmethod
-  def from_field(f):
-    return Field(
-      name=f.Name,
-      type=f.FieldType.Name,
-      collectable=f.IsCollectible,
-      static=f.IsStatic,
-      public=f.IsPublic,
-      can_read=True,
-      can_write=True,
-    )
-  @staticmethod
-  def from_property(p):
-    return Field(
-      name=p.Name,
-      type=p.PropertyType.Name,
-      collectable=p.CanRead,
-      static=p.GetGetMethod().IsStatic,
-      public=p.GetGetMethod().IsPublic,
-      can_read=p.CanRead,
-      can_write=p.CanWrite,
-    )
-
-  @staticmethod
-  def collect_type(ty):
-    return [Field.from_field(i) for i in ty.GetFields()] + [Field.from_property(i) for i in ty.GetProperties()]
-
-  @staticmethod
-  def to_dict(fields: list["Field"], instance):
-    return {f.name: getattr(instance, f.name) for f in fields}
-
 @dataclass
 class FileHeader:
   FileNameHash: int
@@ -132,7 +94,7 @@ df_hash
 
 # %%
 for tag in tags:
-  path = f"{src_path}/{tag}.bhd"
+  path = f"{src_dir}/{tag}.bhd"
   logger.info(f"Unpacking {path}")
   df, file_headers = unpack_bhd(path, tag, hashes=df_hash)
   print(df)
