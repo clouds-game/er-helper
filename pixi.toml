@@ -4,9 +4,15 @@ version = "0.1.0"
 description = "Add a short description here"
 authors = ["Clouds Flowing <clouds.flowing@gmail.com>"]
 channels = ["conda-forge"]
-platforms = ["linux-64"]
+platforms = ["linux-64", "osx-arm64", "win-64"]
 
 [tasks]
+init = { depends_on = ["init-git", "build-dotnet", "init-tauri"] }
+init-git = "git submodule update --init --recursive && python scripts/patch.py"
+init-tauri = "yarn --cwd tauri-app install && python scripts/test.py"
+build-dotnet = "dotnet build"
+unpack = { cmd = "python scripts/unpack.py", depends_on = ["build-dotnet"] }
+dev-tauri = "yarn --cwd tauri-app tauri dev"
 
 [dependencies]
 python = "~=3.12.5"

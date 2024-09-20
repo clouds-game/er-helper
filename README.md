@@ -1,8 +1,10 @@
 Unpack
 =======
-1. init submodule: `git submodule update --init --recursive`
-2. install dependencies: `pixi install`
-3. copy necessary files via scripts: `pixi run python scripts/patch.py`
-4. build dotnet library: `dotnet build`
-5. edit config file: `cp config.example.toml config.toml`
-6. run unpack script: `pixi run python scripts/unpack.py`
+1. init pixi: `pixi install && pixi run init`
+2. edit config file: `cp config.example.toml config.toml`
+3. run unpack script: `pixi run unpack`
+
+Helper
+=======
+1. init pixi (the same as above)
+2. run tauri `pixi run dev-tauri`

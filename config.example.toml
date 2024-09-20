@@ -2,3 +2,6 @@
 src_dir = "D:/Steam/steamapps/common/ELDEN RING/Game"
 stage1_dir = "D:/tmp/ER"
 #stage2_dir = "D:/tmp/ER2"
+
+[helper]
+file = "C:/Users/user/AppData/Roaming/EldenRing/steam_id/ER0000.sl2"
