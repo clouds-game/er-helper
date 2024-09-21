@@ -124,3 +124,28 @@ df = pl.concat(pl.read_csv(f"logs/unpack_{tag}.csv", schema_overrides=dict(
 df.sort('path', nulls_last=True).write_parquet("scripts/res/unpack_stage1.parquet")
 
 # %%
+def unpack_regulation(path: str, dst_dir: str):
+  bnd = SoulsFormats.SFUtil.DecryptERRegulation(path)
+  for file in bnd.Files:
+    filename = pathlib.Path(file.Name).name
+    target_path = pathlib.Path(f"{dst_dir}/{filename}")
+    if target_path.exists():
+      logger.info(f"[regulation.bin] Skipping {target_path}")
+      continue
+    pathlib.Path(target_path).parent.mkdir(parents=True, exist_ok=True)
+    try:
+      System.IO.File.WriteAllBytes(str(target_path), file.Bytes)
+    except Exception as e:
+      logger.error(f"[regulation.bin] Failed to write {target_path}")
+      os.remove(target_path)
+      raise e
+    logger.info(f"[regulation.bin] {file.ID} {target_path} {file.Flags} {file.CompressionType}")
+  df = pl.DataFrame([{ 'id': f.ID, 'name': pathlib.Path(f.Name).name, 'flags': str(f.Flags), 'compression': str(f.CompressionType) } for f in bnd.Files])
+  df.write_csv(f"logs/unpack_regulation.csv", quote_style="non_numeric")
+
+path = f"{src_dir}/regulation.bin"
+regulation_dst_dir = f"{dst_dir}/param/gameparam"
+print(f"Unpacking  regulation.bin from {src_dir} to {regulation_dst_dir}")
+logger.info(f"Unpacking  regulation.bin from {src_dir} to {regulation_dst_dir}")
+unpack_regulation(path, regulation_dst_dir)
+# %%

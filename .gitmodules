@@ -12,3 +12,6 @@
 	# url = https://github.com/MHDante/pythonnet-stub-generator
 	# see https://github.com/MHDante/pythonnet-stub-generator/pull/14
 	url = https://github.com/clouds56-contrib/pythonnet-stub-generator
+[submodule "vendor/WitchyBND"]
+	path = vendor/WitchyBND
+	url = https://github.com/ividyon/WitchyBND.git
