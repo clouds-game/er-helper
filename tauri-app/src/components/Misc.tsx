@@ -55,7 +55,7 @@ export const PlayerCard = defineComponent<{
       <div class="flex justify-between"><span class="text-2xl">{props.nickname}</span> <span class="text-sm">{ $t('steam_id') }: {props.steam_id}</span></div>
       <div class="flex justify-between"><span>{ $t('role_name') }: {props.role_name}</span></div>
       <div class="flex justify-between">
-        <span>{ $t('duration') }: {props.duration}</span>
+        <span>{ $t('duration') }: {(props.duration / 3600).toFixed(1)}h</span>
         <span><button>{ $t('swtich') }</button><ButtonLanguage class="ml-1" current={locale.value} /></span>
       </div>
     </div>

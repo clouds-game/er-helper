@@ -15,7 +15,7 @@ onMounted(async () => {
   state.update()
   timer = setInterval(() => {
     state.update()
-  }, 500)
+  }, 3000)
   console.log(state.time.current)
 })
 
@@ -52,5 +52,10 @@ const latest_time_str = computed(() => {
   </div>
 </template>
 
-<style scoped>
+<style>
+body {
+  font-family: 'Noto Sans', sans-serif;
+  background-color: #f0f2f5;
+  color: #333;
+}
 </style>
