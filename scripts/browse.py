@@ -1,6 +1,5 @@
 # %%
 from _common import *
-import polars as pl
 import streamlit as st
 
 setup_clr()

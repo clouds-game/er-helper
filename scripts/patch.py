@@ -1,8 +1,8 @@
 # %%
 import os
 import shutil
-os.chdir(os.path.dirname(os.path.dirname(__file__)))
-print(os.getcwd())
+# os.chdir(os.path.dirname(os.path.dirname(__file__)))
+# print(os.getcwd())
 
 # %%
 def copy_files(src: str, dst: str, *, files: list[str] = []):

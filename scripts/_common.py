@@ -1,10 +1,11 @@
 # %%
 import os
 import logging
-
-def enter_project_root():
-  while not os.path.exists('pixi.toml'):
-    os.chdir('..')
+import polars as pl
+import numpy as np
+from dataclasses import dataclass
+from pathlib import Path
+import re
 
 def get_logger(name: str, *, level: int = logging.INFO, filename: str | None = None) -> logging.Logger:
   logger = logging.getLogger(name)
@@ -41,7 +42,7 @@ def load_config() -> dict:
 def setup_clr(dlls: list[str] = ["UnpackHelper", "SoulsFormats"]):
   import pythonnet
   import sys, pathlib
-  enter_project_root()
+  # enter_project_root()
   pythonnet.load("coreclr")
   sys.path.append(str(pathlib.Path("libs/UnpackHelper/bin/Debug/net8.0").absolute()))
   import clr

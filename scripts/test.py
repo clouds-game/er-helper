@@ -1,9 +1,7 @@
 # %%
 from _common import *
-import polars as pl
-import re
 
-enter_project_root()
+# enter_project_root()
 
 ASSET_DIR = "tauri-app/src-tauri/assets"
 
