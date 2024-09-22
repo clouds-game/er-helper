@@ -39,7 +39,7 @@ def unpack_param(path: pathlib.Path, dst_dir: pathlib.Path):
   for row in param.Rows:
     # todo when value is decimal, need to truncate the number
     tmp = [System.Convert.ToHexString(cell.Value) if utils.is_csharp_byte_array(
-        cell.Value) else cell.Value for cell in row.Cells]
+        cell.Value) else round(cell.Value, 6) for cell in row.Cells]
     tmp.insert(0, row.ID)
     data.append(tmp)
   schema = [field.InternalName for field in param.AppliedParamdef.Fields]
