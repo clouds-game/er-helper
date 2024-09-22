@@ -24,6 +24,7 @@ for module in modules:
 additional_types = [
   System.Convert,
   System.Type,
+  System.IO.File,
 ]
 
 # %%

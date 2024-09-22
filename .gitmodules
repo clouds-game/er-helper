@@ -9,4 +9,6 @@
 	url = https://github.com/Nordgaren/UXM-Selective-Unpack
 [submodule "vendor/pythonnet-stub-generator"]
 	path = vendor/pythonnet-stub-generator
-	url = https://github.com/MHDante/pythonnet-stub-generator
+	# url = https://github.com/MHDante/pythonnet-stub-generator
+	# see https://github.com/MHDante/pythonnet-stub-generator/pull/14
+	url = https://github.com/clouds56-contrib/pythonnet-stub-generator
