@@ -10,6 +10,7 @@ platforms = ["linux-64", "osx-arm64", "win-64"]
 init = { depends_on = ["init-git", "build-dotnet", "init-tauri"] }
 init-git = "git submodule update --init --recursive && python scripts/patch.py"
 init-tauri = "yarn --cwd tauri-app install && python scripts/test.py"
+init-clr-typings = "dotnet publish vendor/pythonnet-stub-generator/csharp/PythonNetStubGenerator && python scripts/gen_typings.py"
 build-dotnet = "dotnet build"
 unpack = { cmd = "python scripts/unpack.py", depends_on = ["build-dotnet"] }
 dev-tauri = "yarn --cwd tauri-app tauri dev"

@@ -5,9 +5,9 @@ import pathlib
 setup_clr()
 logger = get_logger(__name__, filename=f'logs/unpack_{today_str()}.log')
 
-import SoulsFormats # type: ignore
-import UnpackHelper # type: ignore
-import System.IO # type: ignore
+import SoulsFormats
+import UnpackHelper
+import System.IO
 
 config = load_config()
 src_dir = config['unpack']['src_dir']

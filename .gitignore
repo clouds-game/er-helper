@@ -3,13 +3,18 @@
 !/vendor/ER-Save-Lib
 !/vendor/SoulsFormatsNEXT
 !/vendor/UXM-Selective-Unpack
-/libs/ER-Save-Lib
+!/vendor/pythonnet-stub-generator
 Cargo.lock
 # pixi environments
 .pixi
 pixi.lock
 yarn.lock
 
+# generated files
+/libs/ER-Save-Lib
+/scripts/typings
+
+# build artifacts
 __pycache__
 **/assets/*.out.json
 **/assets/*.in.rs

@@ -7,3 +7,6 @@
 [submodule "vendor/UXM-Selective-Unpack"]
 	path = vendor/UXM-Selective-Unpack
 	url = https://github.com/Nordgaren/UXM-Selective-Unpack
+[submodule "vendor/pythonnet-stub-generator"]
+	path = vendor/pythonnet-stub-generator
+	url = https://github.com/MHDante/pythonnet-stub-generator

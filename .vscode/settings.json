@@ -1,6 +1,7 @@
 {
   "python.analysis.extraPaths": [
-    "./scripts"
+    "./scripts",
+    "./scripts/typings"
   ],
   "jupyter.notebookFileRoot": "${workspaceFolder}"
 }
