@@ -1,6 +1,6 @@
 # %%
 from _common import *
-import utils
+import _utils
 from dataclasses import dataclass
 import polars as pl
 import pathlib
@@ -24,7 +24,7 @@ def unpack_param(path: pathlib.Path, dst_dir: pathlib.Path):
   print("Unpack Param", path)
   ER_def_path = pathlib.Path("vendor/WitchyBND/WitchyBND/Assets/Paramdex/ER/Defs")
   exist_names = [path.stem for path in ER_def_path.glob("*.xml")]
-  paramdef_name = utils.get_def_name(path.stem, exist_names)
+  paramdef_name = _utils.get_def_name(path.stem, exist_names)
   paramdef_path = ER_def_path.joinpath(f"{paramdef_name}.xml")
   if not paramdef_path.exists():
     logger.error(f"[param] [{path.stem}] Failed to find {paramdef_path}. Skip")
@@ -38,7 +38,7 @@ def unpack_param(path: pathlib.Path, dst_dir: pathlib.Path):
   data = []
   for row in param.Rows:
     # todo when value is decimal, need to truncate the number
-    tmp = [System.Convert.ToHexString(cell.Value) if utils.is_csharp_byte_array(
+    tmp = [System.Convert.ToHexString(cell.Value) if _utils.is_csharp_byte_array(
         cell.Value) else cell.Value for cell in row.Cells]
     tmp.insert(0, row.ID)
     data.append(tmp)
@@ -121,7 +121,7 @@ def unpack_dcx(path: pathlib.Path, dst_dir: pathlib.Path, just_unzip = False):
     target_path = dst_dir.joinpath(f"{path.stem}")
     System.IO.File.WriteAllBytes(str(target_path), csharp_bytes)
   else:
-    format = utils.get_format(bytes(csharp_bytes)[:10])
+    format = _utils.get_format(bytes(csharp_bytes)[:10])
     match format:
       case "BND4":
         unpack_bnd4(path, pathlib.Path(dst_dir), csharp_bytes)
@@ -136,8 +136,3 @@ msg_dst_dir = pathlib.Path(f"{dst_dir}/msg")
 for lang in ["zhocn", "jpnjp", "engus"]:
   for file in msg_src_dir.joinpath(lang).glob('*.dcx'):
     unpack_dcx(file, msg_dst_dir.joinpath(lang))
-
-# %%
-path = pathlib.Path(f"D:/tmp/ER/menu/hi/01_common.tpf.dcx")
-unpack_dcx(path, path.parent.joinpath(path.stem))
-# %%

@@ -79,12 +79,3 @@ def get_def_name(name: str, exist_names: list[str]):
   if name.rsplit("_", 1)[0] in exist_names:
     return name.rsplit("_", 1)[0]
   return NameMaps.get(name, name)
-
-# %%
-import polars as pl
-dfs = [pl.concat(pl.read_json(
-  f"D:/tmp/ER2/msg/{i}/{j}.json") for j in ["NpcName", "NpcName_dlc01"]
-).rename(dict(text='text_'+i)) for i in ["zhocn", "jpnjp", "engus"]]
-# %%
-dfs[0].join(dfs[1], on='id').join(dfs[2], on='id').select(pl.col(['id', 'text_zhocn', 'text_jpnjp', 'text_engus'])).write_csv("npcname.csv")
-# %%

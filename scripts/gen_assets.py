@@ -97,12 +97,14 @@ df = pl.read_csv(path).select(pl.col(['id', 'defeatBossFlagId', 'bossMapAreaNo',
 df
 
 # %%
-df1 = pl.read_csv('D:/tmp/ER2/param/gameparam/NpcParam.csv')
-df2 = pl.concat(pl.read_json(f'D:/tmp/ER2/msg/zhocn/{i}.json') for i in ['NpcName', 'NpcName_dlc01'])
+path = f"{dst_dir}/param/gameparam/NpcParam.csv"
+df1 = pl.read_csv(path)
+df2 = pl.concat(pl.read_json(f'{dst_dir}/msg/zhocn/{i}.json') for i in ['NpcName', 'NpcName_dlc01'])
 dfx = df1.join(df2, left_on='nameId', right_on='id').unique('nameId').select(pl.col(['nameId', 'text']))
 # %%
 import polars as pl
-df = (pl.read_csv("D:/tmp/ER2/param/gameparam/GameAreaParam.csv").select(['id','defeatBossFlagId'])
+path = f"{dst_dir}/param/gameparam/GameAreaParam.csv"
+df = (pl.read_csv(path).select(['id','defeatBossFlagId'])
 
 )
 df2 = (pl.read_csv("tauri-app/src-tauri/assets/boss.csv")
@@ -116,7 +118,7 @@ df2
 
 import polars as pl
 
-df = (pl.read_csv("D:/tmp/ER2/param/gameparam/NpcParam.csv")
+df = (pl.read_csv(f"{dst_dir}/param/gameparam/NpcParam.csv")
       .select(['id', 'nameId', 'npcType','teamType', 'moveType', 'vowType','toughness', 'roleNameId', 'loadAssetId', 'behaviorVariationId'])
       )
 df = df.filter(pl.col('npcType') == 1)
