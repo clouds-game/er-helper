@@ -25,7 +25,7 @@ copy_files("vendor/ER-Save-Lib", "libs/ER-Save-Lib", files=["src/", "Cargo.toml"
 import glob
 
 for path in glob.glob("libs/ER-Save-Lib/**/*.rs", recursive=True):
-  with open(path, "r") as f:
+  with open(path, "r", encoding='utf-8') as f:
     data = f.read()
   modified = False
   if "pub(crate)" in data:

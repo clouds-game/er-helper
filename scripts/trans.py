@@ -21,25 +21,25 @@ dst_dir = config['unpack']['stage2_dir']
 # %%
 
 def unpack_param(path: pathlib.Path, dst_dir: pathlib.Path):
-  ER_res_path = pathlib.Path("vendor/WitchyBND/WitchyBND/Assets/Paramdex/ER")
-  paramdef_path = ER_res_path.joinpath(f"Defs/{path.stem}.xml")
+  print("Unpack Param", path)
+  ER_def_path = pathlib.Path("vendor/WitchyBND/WitchyBND/Assets/Paramdex/ER/Defs")
+  exist_names = [path.stem for path in ER_def_path.glob("*.xml")]
+  paramdef_name = utils.get_def_name(path.stem, exist_names)
+  paramdef_path = ER_def_path.joinpath(f"{paramdef_name}.xml")
   if not paramdef_path.exists():
-    logger.warning(f"[param] Failed to find {paramdef_path}. Try use new name")
-    newname = path.stem.rsplit('_', 1)[0]
-    paramdef_path = ER_res_path.joinpath(f"Defs/{newname}.xml")
-    if not paramdef_path.exists():
-      logger.error(f"[param] Failed to find {paramdef_path}. Skip")
-      return
+    logger.error(f"[param] [{path.stem}] Failed to find {paramdef_path}. Skip")
+    return
   param = SoulsFormats.SoulsFile[SoulsFormats.PARAM].Read(str(path))
   paramDef = SoulsFormats.PARAMDEF.XmlDeserialize(str(paramdef_path))
-  if not param.ApplyParamdefCarefully(paramDef):
-    logger.error(f"[param] Failed to apply paramdef to {path.name}")
-    return
+  # if not param.ApplyParamdefCarefully(paramDef):
+    # logger.error(f"[param] [{path.stem}] Failed to apply paramdef to {path.name}")
+    # return
+  param.ApplyParamdef(paramDef)
   data = []
   for row in param.Rows:
     # todo when value is decimal, need to truncate the number
     tmp = [System.Convert.ToHexString(cell.Value) if utils.is_csharp_byte_array(
-        cell.Value) else round(cell.Value, 6) for cell in row.Cells]
+        cell.Value) else cell.Value for cell in row.Cells]
     tmp.insert(0, row.ID)
     data.append(tmp)
   schema = [field.InternalName for field in param.AppliedParamdef.Fields]
@@ -48,21 +48,26 @@ def unpack_param(path: pathlib.Path, dst_dir: pathlib.Path):
   target_path = pathlib.Path(f"{dst_dir}/{path.stem}.csv")
   target_path.parent.mkdir(parents=True, exist_ok=True)
   df.write_csv(target_path)
-  logger.info(f"[param] Unpack {path} to {target_path}")
+  logger.info(f"[param] [{path.stem}] Unpack {path} to {target_path}")
 
+# %%
 param_src_dir = pathlib.Path(f"{src_dir}/param/gameparam")
 param_dst_dir = pathlib.Path(f"{dst_dir}/param/gameparam")
 for file in param_src_dir.glob('*.param'):
   unpack_param(file, param_dst_dir)
 
 # %%
+def read_csharp_bytes(path: pathlib.Path):
+  with open(path, "rb") as f:
+      file_bytes = f.read()
+  csharp_bytes = System.Array[System.Byte](file_bytes)
+  return csharp_bytes
+
 def unpack_fmg(path: pathlib.Path, dst_dir: pathlib.Path, csharp_bytes=None):
   print(f"Unpack FMG {path}")
   # logger.info(f"Unpack FMG {path.name}")
   if not csharp_bytes:
-    with open(path, "rb") as f:
-      file_bytes = f.read()
-    csharp_bytes = System.Array[System.Byte](file_bytes)
+    csharp_bytes = read_csharp_bytes(path)
   fmg = SoulsFormats.SoulsFile[SoulsFormats.FMG].Read(csharp_bytes)
   data = [{"id":entry.ID,"text": entry.Text} for entry in fmg.Entries]
   target_path = dst_dir.joinpath(f"{path.stem}.json")
@@ -70,6 +75,17 @@ def unpack_fmg(path: pathlib.Path, dst_dir: pathlib.Path, csharp_bytes=None):
   with open(target_path, "w", encoding='utf-8') as f:
     json.dump(data, f, indent=2, ensure_ascii=False)
   logger.info(f"[FMG] Unpack {path} to {target_path}")
+
+def unpack_tpf(path: pathlib.Path, dst_dir: pathlib.Path, csharp_bytes=None):
+  print(f"Unpack TPF {path}")
+  # logger.info(f"Unpack FMB {path}")
+  if not csharp_bytes:
+    csharp_bytes = read_csharp_bytes(path)
+  tpf = SoulsFormats.SoulsFile[SoulsFormats.TPF].Read(csharp_bytes)
+  dst_dir.mkdir(parents=True, exist_ok=True)
+  for texture in tpf.Textures:
+    target_path = dst_dir.joinpath(f"{texture.Name}.dds")
+    System.IO.File.WriteAllBytes(str(target_path), texture.Headerize())
 
 
 def unpack_bnd4(path: pathlib.Path, dst_dir: pathlib.Path, csharp_bytes=None):
@@ -94,24 +110,34 @@ def unpack_bnd4(path: pathlib.Path, dst_dir: pathlib.Path, csharp_bytes=None):
       logger.info(f"[{path.name}] Unpack {file.Name} to {target_path}")
 
 
-def unpack_dcx(path: pathlib.Path, dst_dir: pathlib.Path):
+def unpack_dcx(path: pathlib.Path, dst_dir: pathlib.Path, just_unzip = False):
   print(f"Unpack DCX {path}")
   logger.info(f"Unpack DCX {path}")
   # to load oo2core_6_win64.dll
   os.environ['PATH'] = os.environ.get('PATH', '') + os.pathsep + game_dir
   compression = SoulsFormats.DCX.Type.Unknown
   (csharp_bytes, compression) = SoulsFormats.DCX.Decompress(str(path), compression)
-  format = utils.get_format(bytes(csharp_bytes)[:10])
-  match format:
-    case "BND4":
-      unpack_bnd4(path, pathlib.Path(dst_dir), csharp_bytes)
-    case _:
-      raise Exception(f"Unknown format {format}")
+  if just_unzip:
+    target_path = dst_dir.joinpath(f"{path.stem}")
+    System.IO.File.WriteAllBytes(str(target_path), csharp_bytes)
+  else:
+    format = utils.get_format(bytes(csharp_bytes)[:10])
+    match format:
+      case "BND4":
+        unpack_bnd4(path, pathlib.Path(dst_dir), csharp_bytes)
+      case "TPF":
+        unpack_tpf(path, pathlib.Path(dst_dir), csharp_bytes)
+      case _:
+        raise Exception(f"Unknown format {format}")
 
+# %%
 msg_src_dir = pathlib.Path(f"{src_dir}/msg")
 msg_dst_dir = pathlib.Path(f"{dst_dir}/msg")
 for lang in ["zhocn", "jpnjp", "engus"]:
   for file in msg_src_dir.joinpath(lang).glob('*.dcx'):
     unpack_dcx(file, msg_dst_dir.joinpath(lang))
 
+# %%
+path = pathlib.Path(f"D:/tmp/ER/menu/hi/01_common.tpf.dcx")
+unpack_dcx(path, path.parent.joinpath(path.stem))
 # %%
