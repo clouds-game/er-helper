@@ -4,6 +4,8 @@
 !/vendor/SoulsFormatsNEXT
 !/vendor/UXM-Selective-Unpack
 !/vendor/pythonnet-stub-generator
+!/vendor/WitchyBND
+!/vendor/oodle-wrapper
 Cargo.lock
 # pixi environments
 .pixi

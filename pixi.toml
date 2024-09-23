@@ -7,9 +7,11 @@ channels = ["conda-forge"]
 platforms = ["linux-64", "osx-arm64", "win-64"]
 
 [tasks]
-init = { depends_on = ["init-git", "build-dotnet", "init-tauri"] }
+init = { depends_on = ["init-git", "build-dotnet", "init-clr-typings", "init-tauri"] }
 init-git = "git submodule update --init --recursive && python scripts/patch.py"
 init-tauri = "yarn --cwd tauri-app install && python scripts/test.py"
+# this only need in non-windows
+init-oodle = "bash scripts/init_oodle.sh"
 init-clr-typings = "dotnet publish vendor/pythonnet-stub-generator/csharp/PythonNetStubGenerator && python scripts/gen_typings.py"
 build-dotnet = "dotnet build"
 unpack = { cmd = "python scripts/unpack.py", depends_on = ["build-dotnet"] }
@@ -24,3 +26,4 @@ polars = "~=1.7"
 pythonnet = "~=3.0"
 tqdm = "~=4"
 streamlit = "~=1.38"
+cmake = ">=3.30.3,<4"

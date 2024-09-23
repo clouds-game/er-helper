@@ -15,3 +15,6 @@
 [submodule "vendor/WitchyBND"]
 	path = vendor/WitchyBND
 	url = https://github.com/ividyon/WitchyBND.git
+[submodule "vendor/oodle-wrapper"]
+	path = vendor/oodle-wrapper
+	url = https://github.com/McSimp/linoodle
