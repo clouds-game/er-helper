@@ -8,11 +8,11 @@ platforms = ["linux-64", "osx-arm64", "win-64"]
 
 [tasks]
 init = { depends_on = ["init-git", "build-dotnet", "init-clr-typings", "init-tauri"] }
-init-git = "git submodule update --init --recursive && python scripts/patch.py"
+init-git = "git submodule update --init --recursive && sed 's|${PWD}|'$(pwd)'|g' python.env.in | tee python.env && python scripts/patch.py"
 init-tauri = "yarn --cwd tauri-app install && python scripts/test.py"
 # this only need in non-windows
 init-oodle = "bash scripts/init_oodle.sh"
-init-clr-typings = "dotnet publish vendor/pythonnet-stub-generator/csharp/PythonNetStubGenerator && python scripts/gen_typings.py"
+init-clr-typings = { cmd = "dotnet publish vendor/pythonnet-stub-generator/csharp/PythonNetStubGenerator && python scripts/gen_typings.py", depends_on = ["build-dotnet"] }
 build-dotnet = "dotnet build"
 unpack = { cmd = "python scripts/unpack.py", depends_on = ["build-dotnet"] }
 dev-tauri = "yarn --cwd tauri-app tauri dev"

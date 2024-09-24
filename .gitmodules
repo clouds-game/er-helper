@@ -3,7 +3,8 @@
 	url = https://github.com/ClayAmore/ER-Save-Lib
 [submodule "vendor/SoulsFormatsNEXT"]
 	path = vendor/SoulsFormatsNEXT
-	url = https://github.com/soulsmods/SoulsFormatsNEXT
+	# url = https://github.com/soulsmods/SoulsFormatsNEXT
+	url = https://github.com/clouds56-contrib/SoulsFormatsNEXT
 [submodule "vendor/UXM-Selective-Unpack"]
 	path = vendor/UXM-Selective-Unpack
 	url = https://github.com/Nordgaren/UXM-Selective-Unpack

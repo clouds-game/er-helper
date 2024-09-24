@@ -4,5 +4,6 @@
     "./scripts/typings"
   ],
   "jupyter.notebookFileRoot": "${workspaceFolder}",
+  "python.envFile": "${workspaceFolder}/python.env",
   "cmake.sourceDirectory": "${workspaceFolder}/vendor/oodle-wrapper"
 }

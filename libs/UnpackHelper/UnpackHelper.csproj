@@ -12,7 +12,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="$(ProjectDir)\lib\**" CopyToOutputDirectory="PreserveNewest" Link="\%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="BouncyCastle.Cryptography" Version="2.4.0" />
+    <PackageReference Include="System.Runtime.InteropServices" Version="4.3.0" />
     <ProjectReference Include="..\..\vendor\SoulsFormatsNEXT\SoulsFormats\SoulsFormats.csproj" />
   </ItemGroup>
 </Project>

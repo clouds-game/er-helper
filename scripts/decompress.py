@@ -15,6 +15,10 @@ game_dir = config['unpack']['src_dir']
 stage1_dir = config['unpack']['stage1_dir']
 stage2_dir = config['unpack']['stage2_dir']
 
+import sys
+UnpackHelper.NativeLibrary.AddToPath(sys.path)
+UnpackHelper.Helper.LoadOodle()
+
 # %%
 
 def unpack_param(path: PathLike, dst_dir: PathLike, defs_path: PathLike = "vendor/WitchyBND/WitchyBND/Assets/Paramdex/ER/Defs"):
@@ -59,15 +63,14 @@ def bytes_to_clr(data: bytes | System.Array[System.Byte], *, path: PathLike | No
     if path:
       return System.IO.File.ReadAllBytes(str(path))
     return None
-  if isinstance(data, bytes):
-    return System.Array[System.Byte](data)
+  return System.Array[System.Byte](data)
 
 def unpack_fmg(path: PathLike, dst_dir: PathLike, data=None):
   print(f"Unpack FMG {path}")
   path, dst_dir = Path(path), Path(dst_dir)
   # logger.info(f"Unpack FMG {path.name}")
   data = bytes_to_clr(data, path=path)
-  fmg = SoulsFormats.SoulsFile[SoulsFormats.FMG].Read(data)
+  fmg: SoulsFormats.FMG = UnpackHelper.Format[SoulsFormats.FMG].OpenInMemory(data)
   data = [{"id":entry.ID,"text": entry.Text} for entry in fmg.Entries]
   target_path = dst_dir.joinpath(f"{path.stem}.json")
   target_path.parent.mkdir(parents=True, exist_ok=True)
@@ -78,9 +81,9 @@ def unpack_fmg(path: PathLike, dst_dir: PathLike, data=None):
 def unpack_tpf(path: PathLike, dst_dir: PathLike, data=None):
   print(f"Unpack TPF {path}")
   path, dst_dir = Path(path), Path(dst_dir)
-  # logger.info(f"Unpack FMB {path}")
+  # logger.info(f"Unpack TPF {path}")
   data = bytes_to_clr(data, path=path)
-  tpf: SoulsFormats.TPF = SoulsFormats.SoulsFile[SoulsFormats.TPF].Read(data)
+  tpf: SoulsFormats.TPF = UnpackHelper.Format[SoulsFormats.TPF].OpenInMemory(data)
   dst_dir.mkdir(parents=True, exist_ok=True)
   for texture in tpf.Textures:
     target_path = dst_dir.joinpath(f"{texture.Name}.dds")
@@ -101,7 +104,11 @@ def unpack_bnd4(path: PathLike, dst_dir: PathLike, data=None):
   for file in bnd.Files:
     # (sub_path, root) = utils.UnrootBNDPath(file.Name)
     data = bnd.ReadFile(file)
-    target_path = dst_dir.joinpath(f"{Path(file.Name).name}")
+    # N:\GR\data\INTERROOT_win64\msg\zhoCN\AccessoryInfo.fmg
+    target_path = dst_dir.joinpath(f"{str(file.Name).split('\\')[-1]}")
+    if data is None:
+      logger.error(f"[{path.name}] Failed to read {file.Name}")
+      continue
     if file.Name.endswith(".fmg"):
       unpack_fmg(target_path, dst_dir, data)
     else:
@@ -115,8 +122,6 @@ def unpack_dcx(path: PathLike, dst_dir: PathLike, just_unzip = False):
   logger.info(f"Unpack DCX {path}")
   path, dst_dir = Path(path), Path(dst_dir)
   # to load oo2core_6_win64.dll
-  os.environ['PATH'] = os.environ.get('PATH', '') + os.pathsep + game_dir
-  os.environ['LD_LIBRARY_PATH'] = os.environ.get('PATH', '') + os.pathsep + os.path.join(os.getcwd(), 'libs/UnpackHelper')
   compression = SoulsFormats.DCX.Type.Unknown
   (csharp_bytes, compression) = SoulsFormats.DCX.Decompress(str(path), compression)
   if just_unzip:

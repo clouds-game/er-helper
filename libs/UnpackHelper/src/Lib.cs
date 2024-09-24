@@ -1,6 +1,4 @@
-﻿using System.Security.Cryptography;
-
-namespace UnpackHelper;
+﻿namespace UnpackHelper;
 
 public class Helper {
   public static readonly string OutputDir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
@@ -44,8 +42,127 @@ public class Helper {
     return bhd;
   }
 
+  public static IntPtr LoadOodle(int version = 6) {
+    Console.WriteLine($"Loading Oodle {version}");
+    var ptr = NativeLibrary.LoadLibrary($"oo2core_{version}_win64");
+    if (ptr != IntPtr.Zero) {
+      var oodleType = typeof(SoulsFormats.Oodle);
+      var fieldName = version switch {
+        6 => "Oodle6Ptr",
+        8 => "Oodle8Ptr",
+        _ => null,
+      };
+      if (fieldName == null) {
+        Console.WriteLine($"Invalid Oodle version {version}");
+        return ptr;
+      }
+      var oodle6PtrField = oodleType.GetField(fieldName, System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+      if (oodle6PtrField == null) {
+        Console.WriteLine($"Could not find field {fieldName} in {oodleType}");
+      }
+      oodle6PtrField?.SetValue(null, ptr);
+      Console.WriteLine($"Oodle {version} loaded, {new SoulsFormats.Oodle().GetOodlePtr()}");
+    }
+    return ptr;
+  }
+}
 
-  public static void Unpack() {
-    Console.WriteLine("Unpacking...");
+public class Format<T> where T : SoulsFormats.SoulsFile<T>, new() {
+  public static T OpenInMemory(byte[] bytes)  {
+    return SoulsFormats.SoulsFile<T>.Read(bytes);
+  }
+
+  public static T OpenFile(string path) {
+    return SoulsFormats.SoulsFile<T>.Read(path);
+  }
+}
+
+public class NativeLibrary {
+  public static void AddToPath(params string[] paths) {
+    _search_paths = [
+      .. paths,
+      .. SearchPaths.Where(it => !paths.Contains(it)),
+    ];
+  }
+
+  public static IntPtr LoadLibrary(string path) {
+    if (Libraries.TryGetValue(path, out IntPtr handle)) {
+      return handle;
+    }
+    if (System.Runtime.InteropServices.NativeLibrary.TryLoad(path, out handle)) {
+      Libraries[path] = handle;
+      return handle;
+    }
+    string? fullPath = FindLibrary(path);
+    if (fullPath != null) {
+      if (System.Runtime.InteropServices.NativeLibrary.TryLoad(fullPath, out handle)) {
+        Libraries[path] = handle;
+        return handle;
+      }
+    }
+    return IntPtr.Zero;
+  }
+
+  public static void FreeLibrary(IntPtr handle) {
+    foreach (var entry in Libraries) {
+      if (entry.Value == handle) {
+        Libraries.Remove(entry.Key);
+        break;
+      }
+    }
+    System.Runtime.InteropServices.NativeLibrary.Free(handle);
+  }
+
+  public static string? FindLibrary(string name) {
+    var candidates = new List<string> {name};
+    if (IsMacOS) {
+      candidates.Add($"{name}.dylib");
+      candidates.Add($"lib{name}.dylib");
+    }
+    if (IsLinux || IsMacOS) {
+      candidates.Add($"{name}.so");
+      candidates.Add($"lib{name}.so");
+    }
+    if (IsWindows) {
+      candidates.Add($"{name}.dll");
+    }
+    foreach (var path in SearchPaths) {
+      foreach (var candidate in candidates) {
+        var file = Path.Combine(path, candidate);
+        if (File.Exists(file)) {
+          return file;
+        }
+      }
+    }
+    return null;
+  }
+
+  static readonly Dictionary<string, IntPtr> Libraries = [];
+  static private string[] _search_paths = [];
+
+  static readonly bool IsLinux = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux);
+  static readonly bool IsWindows = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows);
+  static readonly bool IsMacOS = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX);
+  static string[] SearchPaths {
+    get {
+      if (_search_paths.Length == 0) {
+
+        var paths = new List<string>();
+        paths.AddRange(Environment.GetEnvironmentVariable("PATH")?.Split(Path.PathSeparator) ?? []);
+        paths.AddRange(Environment.GetEnvironmentVariable("LD_LIBRARY_PATH")?.Split(Path.PathSeparator) ?? []);
+        paths.AddRange(Environment.GetEnvironmentVariable("DYLD_LIBRARY_PATH")?.Split(Path.PathSeparator) ?? []);
+
+        if (IsLinux || IsMacOS) {
+            paths.Add("/usr/lib");
+            paths.Add("/lib");
+        }
+        if (IsWindows) {
+            paths.Add("C:/Windows/System32");
+        }
+
+        _search_paths = paths.Where(i => !string.IsNullOrEmpty(i)).ToArray();
+      }
+      return _search_paths;
+    }
   }
 }
