@@ -5,7 +5,7 @@ from _common import *
 import polars as pl
 import pathlib
 
-logger = get_logger(__name__, filename=f'logs/pack_{today_str()}.log')
+logger = get_logger(__name__, filename=f'logs/gen_assets_{today_str()}.log')
 
 config = load_config()
 game_dir = config['unpack']['src_dir']
@@ -55,14 +55,47 @@ def pack_boss():
   pass
 
 # %%
+
+
 def pack_weapon():
   weapon_names = (pl.concat([pl.read_json(f"{dst_dir}/msg/zhocn/{filename}.json") for filename in ["WeaponName", "WeaponName_dlc01"]])
-                .filter([pl.col('text').is_not_null(), pl.col('text') != '[ERROR]']))
+                  .filter([pl.col('text').is_not_null(), pl.col('text') != '[ERROR]']))
   EquipParamWeapon = (pl.read_csv(f"{dst_dir}/param/gameparam/EquipParamWeapon.csv").select(['id', 'iconId', 'wepType'])
                       .rename({'iconId': 'icon_id', 'wepType': 'wep_type'}))
-  df = EquipParamWeapon.join(weapon_names, left_on='id', right_on='id').rename({'text': "name"})
+  df = EquipParamWeapon.join(
+      weapon_names, left_on='id', right_on='id').rename({'text': "name"})
   df.write_json(f"{ASSET_DIR}/weapon.out.json")
-pack_weapon()
+  icon_ids = [row['icon_id'] for row in df.iter_rows(named=True)]
+  icon_ids = list(set(icon_ids))
+  return icon_ids
+
+
+def pack_weapon_icons(icon_ids: list[int], progress=True):
+  from PIL import Image
+  import imageio.v2 as imageio
+  icons_src_dir = pathlib.Path(f"{dst_dir}/menu/hi/00_solo")
+  icons_dst_dir = pathlib.Path(f"{ASSET_DIR}/icons")
+
+  icon_ids = list(set(icon_ids))
+  if progress:
+    import tqdm
+    bar = tqdm.tqdm(total=len(icon_ids), desc="change format")
+  for icon_id in icon_ids:
+    icon_file = icons_src_dir.joinpath(f"MENU_Knowledge_{icon_id:05d}.dds")
+    target_file = icons_dst_dir.joinpath(icon_file.stem).with_suffix('.png')
+    try:
+      image_array = imageio.imread(icon_file)
+      image = Image.fromarray(image_array)
+      image.save(target_file)
+    except Exception as e:
+      logger.error(f"[ weapon_icon ] Change format failed {icon_file} -> {target_file} error : {e}")
+      continue
+    if progress:
+      bar.update()
+    logger.info(f"[ weapon_icon ] Change format {icon_file} -> {target_file}")
+
+icon_ids = pack_weapon()
+pack_weapon_icons(icon_ids)
 
 # %%
 import pathlib

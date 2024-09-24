@@ -79,3 +79,12 @@ def get_def_name(name: str, exist_names: list[str]):
   if name.rsplit("_", 1)[0] in exist_names:
     return name.rsplit("_", 1)[0]
   return NameMaps.get(name, name)
+
+
+def read_csharp_bytes(path: pathlib.Path):
+  import clr
+  import System
+  with open(path, "rb") as f:
+    file_bytes = f.read()
+  csharp_bytes = System.Array[System.Byte](file_bytes)
+  return csharp_bytes
