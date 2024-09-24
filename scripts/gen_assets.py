@@ -6,7 +6,8 @@ logger = get_logger(__name__, filename=f'logs/gen_assets_{today_str()}.log')
 
 config = load_config()
 game_dir = config['unpack']['src_dir']
-dst_dir = config['unpack']['stage2_dir']
+stage1_dir = config['unpack']['stage1_dir']
+stage2_dir = config['unpack']['stage2_dir']
 
 ASSET_DIR = "tauri-app/src-tauri/assets"
 langs = ['zhocn', 'jpnjp', 'engus']
@@ -18,7 +19,7 @@ def get_names(filenames):
     # df = pl.DataFrame(schema={'id': pl.Int64, 'text': pl.String})
     dfs = []
     for filename in filenames:
-      msg_path = Path(src_dir).joinpath(f"msg/{lang}/{filename}")
+      msg_path = Path(stage2_dir).joinpath(f"msg/{lang}/{filename}")
       dfs.append(pl.read_json(msg_path))
       # dfs.append(pl.read_json(msg_path).with_columns(textstrip=pl.col('text').str.strip_chars()))
     df = pl.concat(dfs)
@@ -52,14 +53,45 @@ def pack_boss():
   pass
 
 # %%
-def pack_weapon():
-  weapon_names = (pl.concat([pl.read_json(f"{dst_dir}/msg/zhocn/{filename}.json") for filename in ["WeaponName", "WeaponName_dlc01"]])
-                .filter([pl.col('text').is_not_null(), pl.col('text') != '[ERROR]']))
-  EquipParamWeapon = (pl.read_csv(f"{dst_dir}/param/gameparam/EquipParamWeapon.csv").select(['id', 'iconId', 'wepType'])
+
+
+def pack_weapon(target_path: PathLike, src_dir: PathLike):
+  weapon_names = (pl.concat([pl.read_json(f"{src_dir}/msg/zhocn/{filename}.json") for filename in ["WeaponName", "WeaponName_dlc01"]])
+                  .filter([pl.col('text').is_not_null(), pl.col('text') != '[ERROR]']))
+  EquipParamWeapon = (pl.read_csv(f"{src_dir}/param/gameparam/EquipParamWeapon.csv").select(['id', 'iconId', 'wepType'])
                       .rename({'iconId': 'icon_id', 'wepType': 'wep_type'}))
-  df = EquipParamWeapon.join(weapon_names, left_on='id', right_on='id').rename({'text': "name"})
-  df.write_json(f"{ASSET_DIR}/weapon.out.json")
-pack_weapon()
+  df = EquipParamWeapon.join(
+      weapon_names, left_on='id', right_on='id').rename({'text': "name"})
+  df.write_json(target_path)
+  icon_ids = [row['icon_id'] for row in df.iter_rows(named=True)]
+  icon_ids = list(set(icon_ids))
+  return icon_ids
+
+
+def pack_weapon_icons(src_dir: Path, dst_dir: Path,icon_ids: list[int], progress=True):
+  from PIL import Image
+  import imageio.v2 as imageio
+
+  icon_ids = list(set(icon_ids))
+  if progress:
+    import tqdm
+    bar = tqdm.tqdm(total=len(icon_ids), desc="change format")
+  for icon_id in icon_ids:
+    icon_file = src_dir.joinpath(f"MENU_Knowledge_{icon_id:05d}.dds")
+    target_file = dst_dir.joinpath(icon_file.stem).with_suffix('.png')
+    try:
+      image_array = imageio.imread(icon_file)
+      image = Image.fromarray(image_array)
+      image.save(target_file)
+    except Exception as e:
+      logger.error(f"[ weapon_icon ] Change format failed {icon_file} -> {target_file} error : {e}")
+      continue
+    if progress:
+      bar.update()
+    logger.info(f"[ weapon_icon ] Change format {icon_file} -> {target_file}")
+
+icon_ids = pack_weapon(f"{ASSET_DIR}/weapon.out.json", stage2_dir)
+pack_weapon_icons(Path(f"{stage2_dir}/menu/hi/00_solo"), Path(f"{ASSET_DIR}/icons"), icon_ids)
 
 # %%
 def find_in_msg(d, lang = 'engus', src_dir: PathLike = stage2_dir):
