@@ -2,7 +2,7 @@
 // This starter template is using Vue 3 <script setup> SFCs
 // Check out https://vuejs.org/api/sfc-script-setup.html#script-setup
 import { computed, onMounted, onUnmounted } from 'vue';
-import { Banner, PlayerCard, NumberInfo, NumberInfoBanner } from './components/Misc'
+import { Banner, PlayerCard, NumberInfo, NumberInfoBanner, WeaponInfoBanner } from './components/Misc'
 import * as timeago from 'timeago.js';
 import { useState } from './lib/state';
 import { useI18n } from 'vue-i18n';
@@ -13,10 +13,12 @@ const state = useState()
 let timer: number | undefined
 onMounted(async () => {
   state.update()
+  state.update_equipped_weapons()
   timer = setInterval(() => {
     state.update()
   }, 3000)
   console.log(state.time.current)
+  console.log(state.equipped_weapon_infos)
 })
 
 onUnmounted(() => {
@@ -49,6 +51,10 @@ const latest_time_str = computed(() => {
     <NumberInfo :title="t('ui.boss')" :value="state.basic_number.boss" />
     <NumberInfo :title="t('ui.graces')" :value="state.basic_number.grace" />
     <NumberInfoBanner class="col-span-4" text_keypath="message.death_times" :value="state.basic_number.death" />
+  </div>
+  <div class="m-1 grid grid-cols-2" >
+    <WeaponInfoBanner v-if="state.equipped_weapon_infos.lefthand" :weapon_infos="state.equipped_weapon_infos.lefthand"></WeaponInfoBanner>
+    <WeaponInfoBanner v-if="state.equipped_weapon_infos.righthand" :weapon_infos="state.equipped_weapon_infos.righthand"></WeaponInfoBanner>
   </div>
 </template>
 

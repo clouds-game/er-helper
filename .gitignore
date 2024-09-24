@@ -28,6 +28,7 @@ __pycache__
 **/assets/*.out.json
 **/assets/*.in.rs
 **/assets/*.jpg
+**/assets/icons/*.png
 /build
 
 # temporary files
