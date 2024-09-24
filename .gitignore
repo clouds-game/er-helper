@@ -8,6 +8,8 @@
 !/vendor/oodle-wrapper
 
 # project related environments
+Cargo.lock
+# pixi environments
 .pixi
 pixi.lock
 yarn.lock
@@ -25,6 +27,7 @@ Cargo.lock
 __pycache__
 **/assets/*.out.json
 **/assets/*.in.rs
+**/assets/*.jpg
 /build
 
 # temporary files

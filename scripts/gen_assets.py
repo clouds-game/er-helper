@@ -5,11 +5,14 @@ from _common import *
 logger = get_logger(__name__, filename=f'logs/gen_assets_{today_str()}.log')
 
 config = load_config()
-stage2_dir = Path(config['unpack']['stage2_dir'])
-langs = ['zhocn', 'jpnjp', 'engus']
+game_dir = config['unpack']['src_dir']
+dst_dir = config['unpack']['stage2_dir']
 
+ASSET_DIR = "tauri-app/src-tauri/assets"
+langs = ['zhocn', 'jpnjp', 'engus']
 # %%
-def get_names(filenames: list[str], src_dir: PathLike) -> dict[str, pl.DataFrame]:
+
+def get_names(filenames):
   names = {}
   for lang in langs:
     # df = pl.DataFrame(schema={'id': pl.Int64, 'text': pl.String})
@@ -49,6 +52,16 @@ def pack_boss():
   pass
 
 # %%
+def pack_weapon():
+  weapon_names = (pl.concat([pl.read_json(f"{dst_dir}/msg/zhocn/{filename}.json") for filename in ["WeaponName", "WeaponName_dlc01"]])
+                .filter([pl.col('text').is_not_null(), pl.col('text') != '[ERROR]']))
+  EquipParamWeapon = (pl.read_csv(f"{dst_dir}/param/gameparam/EquipParamWeapon.csv").select(['id', 'iconId', 'wepType'])
+                      .rename({'iconId': 'icon_id', 'wepType': 'wep_type'}))
+  df = EquipParamWeapon.join(weapon_names, left_on='id', right_on='id').rename({'text': "name"})
+  df.write_json(f"{ASSET_DIR}/weapon.out.json")
+pack_weapon()
+
+# %%
 def find_in_msg(d, lang = 'engus', src_dir: PathLike = stage2_dir):
   path = Path(src_dir).joinpath(f"msg/{lang}")
   name = 'id' if isinstance(d, int) else 'text'
@@ -75,8 +88,8 @@ def find_in_param(s, src_dir: PathLike = stage2_dir):
 
 
 # find_in_msg("Adan, Thief of Fire")
-find_in_param(523000000)
-# find_in_msg(71500, 'zhocn')
+# find_in_param(523000000)
+find_in_msg(34010000, 'zhocn')
 # find_in_msg(903350313)
 # 135600
 # find_in_param(36602338)
