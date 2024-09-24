@@ -1,5 +1,6 @@
 import { defineComponent } from "vue"
 import { useI18n } from "vue-i18n"
+import { WeaponInfo } from "../lib/state"
 
 const i18n = {
   en: {
@@ -108,3 +109,35 @@ export const ButtonLanguage = defineComponent<{
   name: "ButtonLanguage",
   props: ["current"],
 })
+
+export const WeaponInfoBanner = defineComponent<{
+  weapon_infos : WeaponInfo[]
+}>((props) => {
+  return () => <div class="m-1 grid grid-cols-3">
+    {props.weapon_infos.map((weapon, index) => (
+        <WeaponInfoBlock
+          // key={index}
+          name={weapon.name}
+          icon_data={weapon.icon_data}
+        />
+      ))}
+  </div>
+}, {
+  name: "WeaponInfoBanner",
+  props: ["weapon_infos"],
+})
+
+export const WeaponInfoBlock = defineComponent<{
+  name: string,
+  icon_data: string,
+}>((props) => {
+  const base64Image = `data:image/png;base64,${props.icon_data}`;
+  return () => <div class="flex flex-col items-center bg-gray m-1 p-1">
+    <div>{props.name}</div>
+    <img src={base64Image} alt="weapon icon" class="rounded-full w-12 h-12" />
+  </div>
+}, {
+  name: "WeaponInfo",
+  props: ["name", 'icon_data'],
+}
+)

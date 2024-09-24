@@ -1,4 +1,5 @@
 use crate::{db::WEAPON_MAP, sync::MyState, Result};
+use base64::Engine;
 use er_save_lib::save::user_data_x::EquippedArmamentsAndItems;
 
 #[derive(Default, Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -7,6 +8,7 @@ pub struct WeaponInfo {
   pub level: u8,
   pub name: String,
   pub icon_id: u16,
+  pub icon_data: String,
   pub wep_type: u16,
 }
 
@@ -15,11 +17,23 @@ impl WeaponInfo {
     let level = weapon_id % 100;
     let weapon_id = weapon_id - level;
     if let Some(weapon) = WEAPON_MAP.get(&weapon_id) {
+      let icon_data = Self::load_icon_data(weapon.icon_id).unwrap_or_else(|_| {
+        eprintln!(
+          "icon not found for weaponid : {} icon_id : {}",
+          weapon_id, weapon.icon_id
+        );
+        String::new()
+      });
+      let level_str = Some(level)
+        .filter(|&lvl| lvl > 0)
+        .map(|lvl| format!("(+{})", lvl))
+        .unwrap_or_default();
       return Self {
         weapon_id: weapon_id,
         level: level.try_into().unwrap(),
-        name: weapon.name.clone(),
+        name: weapon.name.clone() + &level_str,
         icon_id: weapon.icon_id,
+        icon_data: icon_data,
         wep_type: weapon.wep_type,
       };
     } else {
@@ -29,6 +43,12 @@ impl WeaponInfo {
         ..Default::default()
       };
     }
+  }
+
+  fn load_icon_data(icon_id: u16) -> Result<String, std::io::Error> {
+    let path = format!("tauri-app/src-tauri/assets/icons/MENU_Knowledge_{:05}.png", icon_id);
+    let data = std::fs::read(path)?;
+    Ok(base64::engine::general_purpose::STANDARD.encode(data))
   }
 }
 
@@ -77,9 +97,15 @@ mod test {
     let save = er_save_lib::Save::from_path(path).unwrap();
     let equipped = &save.user_data_x[1].equipped_armaments_and_items;
     let weapon_info = crate::weapon::WeaponInfos::from(equipped);
-    println!("weapon_info : {weapon_info:?}");
-    let version = save.user_data_11.version;
-    let size = save.user_data_11.size;
-    println!("version : {version} \n size : {size}")
+    for weapon in weapon_info.lefthand.iter() {
+      println!("lefthand :");
+      println!(
+        "weapon_id : {}\nlevel : {}\nname : {}\nicon_size : {}",
+        weapon.weapon_id,
+        weapon.level,
+        weapon.name,
+        weapon.icon_data.len()
+      );
+    }
   }
 }

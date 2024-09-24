@@ -19,7 +19,7 @@ yarn.lock
 __pycache__
 **/assets/*.out.json
 **/assets/*.in.rs
-**/assets/*.jpg
+**/assets/icons/*.png
 
 .fake
 /logs
