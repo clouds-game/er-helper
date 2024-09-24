@@ -17,4 +17,5 @@
 	url = https://github.com/ividyon/WitchyBND.git
 [submodule "vendor/oodle-wrapper"]
 	path = vendor/oodle-wrapper
-	url = https://github.com/McSimp/linoodle
+	# url = https://github.com/McSimp/linoodle
+	url = https://github.com/clouds56-contrib/linoodle

@@ -6,23 +6,28 @@
 !/vendor/pythonnet-stub-generator
 !/vendor/WitchyBND
 !/vendor/oodle-wrapper
-Cargo.lock
-# pixi environments
+
+# project related environments
 .pixi
 pixi.lock
 yarn.lock
+Cargo.lock
+.fake
+.vs
+.DS_Store
 
 # generated files
 /libs/ER-Save-Lib
 /scripts/typings
+/python.env
 
 # build artifacts
 __pycache__
 **/assets/*.out.json
 **/assets/*.in.rs
+/build
 
-.fake
+# temporary files
 /logs
-
 /config.toml
 /tmp

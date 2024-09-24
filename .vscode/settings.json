@@ -3,5 +3,6 @@
     "./scripts",
     "./scripts/typings"
   ],
-  "jupyter.notebookFileRoot": "${workspaceFolder}"
+  "jupyter.notebookFileRoot": "${workspaceFolder}",
+  "cmake.sourceDirectory": "${workspaceFolder}/vendor/oodle-wrapper"
 }
