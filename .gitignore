@@ -4,6 +4,7 @@
 !/vendor/SoulsFormatsNEXT
 !/vendor/UXM-Selective-Unpack
 !/vendor/pythonnet-stub-generator
+!/vendor/WitchyBND
 Cargo.lock
 # pixi environments
 .pixi
@@ -18,6 +19,7 @@ yarn.lock
 __pycache__
 **/assets/*.out.json
 **/assets/*.in.rs
+**/assets/*.jpg
 
 .fake
 /logs
