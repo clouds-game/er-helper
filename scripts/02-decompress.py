@@ -20,7 +20,6 @@ UnpackHelper.NativeLibrary.AddToPath(sys.path)
 UnpackHelper.Helper.LoadOodle()
 
 # %%
-
 def unpack_param(path: PathLike, dst_dir: PathLike, defs_path: PathLike = "vendor/WitchyBND/WitchyBND/Assets/Paramdex/ER/Defs"):
   print("Unpack Param", path)
   path, dst_dir, defs_path = Path(path), Path(dst_dir), Path(defs_path)
