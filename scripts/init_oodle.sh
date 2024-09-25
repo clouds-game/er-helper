@@ -53,20 +53,20 @@ for line in sys.stdin.readlines():
     m_name = f"m_{base_name}",
   )
   print("""
-    typedef __attribute__((ms_abi)) {return} (*{t_name})({rest});
+    typedef __attribute__((ms_abi)) {return} (*{t_name})({rest}); \\\\
 
-    {m_name} = reinterpret_cast<{t_name}>(m_oodleLib.GetExport("{fn_name}"));
+    {m_name} = reinterpret_cast<{t_name}>(m_oodleLib.GetExport("{fn_name}")); \\\\
 
-    {return} {base_name}({rest}) {{
-        WindowsLibrary::SetupCall();
-        return {m_name}({rest_name});
-    }}
+    {return} {base_name}({rest}) {{ \\\\
+        WindowsLibrary::SetupCall(); \\\\
+        return {m_name}({rest_name}); \\\\
+    }} \\\\
 
-    {t_name} {m_name}; /* for OODLE_{api_version}::{fn_name} */
+    {t_name} {m_name}; /* for OODLE_{api_version}::{fn_name} */ \\\\
 
-    extern "C" {return} {fn_name}({rest}) {{
-        return g_oodleWrapper.{base_name}({rest_name});
-    }}
+    extern "C" {return} {fn_name}({rest}) {{ \\\\
+        return g_oodleWrapper.{base_name}({rest_name}); \\\\
+    }} \\\\
 """.format(**capture))
 EOF
 )")
@@ -87,19 +87,24 @@ EOF
 #define OODLE_API_DECLARE(component) __OODLE_API__##component##__
 
 #define __OODLE_API__TYPEDEF__ \\
-${TYPEDEF//$'\n'/$' \\\n'}
+${TYPEDEF}
+// #end define __OODLE_API__TYPEDEF__
 
 #define __OODLE_API__MEMBER_INIT__ \\
-${MEMBER_INIT//$'\n'/$' \\\n'}
+${MEMBER_INIT}
+// #end define __OODLE_API__MEMBER_INIT__
 
 #define __OODLE_API__MEMBER_METHODS__ \\
-${MEMBER_METHODS//$'\n'/$' \\\n'}
+${MEMBER_METHODS}
+// #end define __OODLE_API__MEMBER_METHODS__
 
 #define __OODLE_API__MEMBER_DECLS__ \\
-${MEMBER_DECLS//$'\n'/$' \\\n'}
+${MEMBER_DECLS}
+// #end define __OODLE_API__MEMBER_DECLS__
 
 #define __OODLE_API__EXTERN_FUNCS__ \\
-${EXTER_FUNCS//$'\n'/$' \\\n'}
+${EXTER_FUNCS}
+// #end define __OODLE_API__EXTERN_FUNCS__
 EOF
 }
 generate 26 "$OODLE_26_API"
@@ -107,4 +112,8 @@ generate 28 "$OODLE_28_API"
 
 
 mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=RELEASE && make -j4
-cp liboodle_26.so "$workspace_dir/libs/UnpackHelper/lib/liboo2core_6_win64.so"
+
+[[ -e liboodle_26.so ]] && cp liboodle_26.so "$workspace_dir/libs/UnpackHelper/lib/liboo2core_6_win64.so"
+[[ -e liboodle_26.dylib ]] && cp liboodle_26.dylib "$workspace_dir/libs/UnpackHelper/lib/liboo2core_6_win64.dylib"
+
+echo "$workspace_dir/libs/UnpackHelper/lib/liboo2core_6_win64.so"
