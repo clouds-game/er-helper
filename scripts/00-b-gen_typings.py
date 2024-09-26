@@ -1,26 +1,28 @@
 # %%
 import importlib
 import pythonnet
-import sys, pathlib
+from pathlib import Path
+import sys
 pythonnet.load("coreclr")
 # dotnet publish vendor/pythonnet-stub-generator/csharp/PythonNetStubGenerator
-sys.path.append(str(pathlib.Path("vendor/pythonnet-stub-generator/csharp/PythonNetStubGenerator/bin/Debug/netstandard2.0/publish").absolute()))
-sys.path.append(str(pathlib.Path("libs/UnpackHelper/bin/Debug/net8.0").absolute()))
+sys.path.extend(str(Path(i).absolute()) for i in [
+  "vendor/pythonnet-stub-generator/csharp/PythonNetStubGenerator/bin/Debug/netstandard2.0/publish",
+  "libs/UnpackHelper/bin/Debug/net8.0",
+])
 import clr
-for dll in ["PythonNetStubGenerator", "UnpackHelper", "SoulsFormats"]:
-  clr.AddReference(dll)
-
-import PythonNetStubGenerator # type: ignore
-import System # type: ignore
 
 modules = [
   "PythonNetStubGenerator",
   "SoulsFormats",
+  "WitchyFormats",
   "UnpackHelper",
   "System.IO",
 ]
 for module in modules:
+  clr.AddReference(module)
   importlib.import_module(module)
+import PythonNetStubGenerator # type: ignore
+import System # type: ignore
 additional_types = [
   System.Convert,
   System.Type,
@@ -28,7 +30,7 @@ additional_types = [
 ]
 
 # %%
-target_dir = pathlib.Path("scripts/typings")
+target_dir = Path("scripts/typings")
 target_dir.mkdir(parents=True, exist_ok=True)
 all_types: dict[str, System.Type] = {}
 all_assemblies = System.AppDomain.CurrentDomain.GetAssemblies()

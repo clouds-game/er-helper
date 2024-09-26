@@ -3,7 +3,7 @@ import os
 import logging
 import polars as pl
 import numpy as np
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict as dataclass_to_dict
 from pathlib import Path
 from os import PathLike
 import re, json, tomllib
@@ -13,8 +13,7 @@ def get_logger(name: str, *, level: int = logging.INFO, filename: str | None = N
   logger.setLevel(level)
 
   if filename is not None:
-    import pathlib
-    pathlib.Path(filename).parent.mkdir(parents=True, exist_ok=True)
+    Path(filename).parent.mkdir(parents=True, exist_ok=True)
     ch = logging.FileHandler(filename, mode='a')
   else:
     ch = logging.StreamHandler()
@@ -30,7 +29,7 @@ def today_str() -> str:
 
 def load_config() -> dict:
   import tomllib, pathlib
-  origin_curdir = curdir = pathlib.Path(".").absolute()
+  origin_curdir = curdir = Path(".").absolute()
 
   while not os.path.exists(curdir / 'config.toml'):
     if os.path.exists('pixi.toml') or os.path.exists('config.example.toml') or curdir.absolute() == curdir.parent.absolute():
@@ -40,12 +39,12 @@ def load_config() -> dict:
   with open(curdir / "config.toml", "rb") as f:
     return tomllib.load(f)
 
-def setup_clr(dlls: list[str] = ["UnpackHelper", "SoulsFormats"]):
+def setup_clr(dlls: list[str] = ["UnpackHelper", "SoulsFormats", "WitchyFormats"]):
   import pythonnet
   import sys, pathlib
   # enter_project_root()
   pythonnet.load("coreclr")
-  sys.path.append(str(pathlib.Path("libs/UnpackHelper/bin/Debug/net8.0").absolute()))
+  sys.path.append(str(Path("libs/UnpackHelper/bin/Debug/net8.0").absolute()))
   import clr
   for dll in dlls:
     clr.AddReference(dll)

@@ -1,6 +1,5 @@
 # %%
 from _common import *
-import pathlib
 
 setup_clr()
 logger = get_logger(__name__, filename=f'logs/unpack_{today_str()}.log')
@@ -59,7 +58,7 @@ def unpack_bdt(path: str, dst_dir: str, *, file_headers: list[SoulsFormats.BHD5.
     if r['path'] is None:
       logger.warning(f"[{tag}] Unknown name {r['FileNameHash']}")
       continue
-    target_path = pathlib.Path(f"{dst_dir}/{r['path']}")
+    target_path = Path(f"{dst_dir}/{r['path']}")
     if target_path.exists():
       logger.info(f"[{tag}] Skipping {target_path}")
       if progress: bar.update(r['PaddedFileSize'])
@@ -75,7 +74,7 @@ def unpack_bdt(path: str, dst_dir: str, *, file_headers: list[SoulsFormats.BHD5.
     except Exception as e:
       logger.error(f"[{tag}] Failed to read {r['path']}")
       raise e
-    pathlib.Path(target_path).parent.mkdir(parents=True, exist_ok=True)
+    Path(target_path).parent.mkdir(parents=True, exist_ok=True)
     try:
       System.IO.File.WriteAllBytes(str(target_path), data)
     except Exception as e:
@@ -124,28 +123,60 @@ df = pl.concat(pl.read_csv(f"logs/unpack_{tag}.csv", schema_overrides=dict(
 df.sort('path', nulls_last=True).write_parquet("scripts/res/unpack_stage1.parquet")
 
 # %%
+@dataclass
+class BinderFile:
+  ID: int
+  Name: str
+  CompressionType: str
+  Flags: str
+
+  def from_net(f: SoulsFormats.BinderFile):
+    return BinderFile(
+      ID=f.ID,
+      Name=str(f.Name),
+      CompressionType=str(f.CompressionType),
+      Flags=str(f.Flags),
+    )
+
 def unpack_regulation(path: str, dst_dir: str):
   bnd = SoulsFormats.SFUtil.DecryptERRegulation(path)
-  for file in bnd.Files:
-    filename = pathlib.Path(file.Name).name
-    target_path = pathlib.Path(f"{dst_dir}/{filename}")
+  df = pl.DataFrame([BinderFile.from_net(f) for f in bnd.Files]).with_columns(
+    Path = 'Name',
+    Name = pl.col('Name').str.split('\\').list.last(),
+  )
+  result: list[int | None] = []
+  for (file, meta) in zip(bnd.Files, df.rows(named=True)):
+    result.append(None)
+    target_path = Path(f"{dst_dir}/{meta['Name']}")
     if target_path.exists():
       logger.info(f"[regulation.bin] Skipping {target_path}")
+      try: result[-1] = target_path.stat().st_size
+      except: pass
       continue
-    pathlib.Path(target_path).parent.mkdir(parents=True, exist_ok=True)
+    target_path.parent.mkdir(parents=True, exist_ok=True)
     try:
+      size = len(file.Bytes)
       System.IO.File.WriteAllBytes(str(target_path), file.Bytes)
     except Exception as e:
       logger.error(f"[regulation.bin] Failed to write {target_path}")
       os.remove(target_path)
       raise e
+    result[-1] = size
     logger.info(f"[regulation.bin] {file.ID} {target_path} {file.Flags} {file.CompressionType}")
-  df = pl.DataFrame([{ 'id': f.ID, 'name': pathlib.Path(f.Name).name, 'flags': str(f.Flags), 'compression': str(f.CompressionType) } for f in bnd.Files])
+  df = df.select(
+    id = 'ID',
+    name = 'Name',
+    size = pl.Series(values=result),
+    compression = 'CompressionType',
+    flag = 'Flags',
+    path = 'Path',
+  )
   df.write_csv(f"logs/unpack_regulation.csv", quote_style="non_numeric")
 
+# %%
 path = f"{src_dir}/regulation.bin"
 regulation_dst_dir = f"{dst_dir}/param/gameparam"
-print(f"Unpacking  regulation.bin from {src_dir} to {regulation_dst_dir}")
-logger.info(f"Unpacking  regulation.bin from {src_dir} to {regulation_dst_dir}")
+print(f"Unpacking regulation.bin from {src_dir} to {regulation_dst_dir}")
+logger.info(f"Unpacking regulation.bin from {src_dir} to {regulation_dst_dir}")
 unpack_regulation(path, regulation_dst_dir)
 # %%

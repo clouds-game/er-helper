@@ -6,6 +6,7 @@ logger = get_logger(__name__, filename=f'logs/gen_assets_{today_str()}.log')
 
 config = load_config()
 stage2_dir = Path(config['unpack']['stage2_dir'])
+paramdex_dir = Path("vendor/WitchyBND/WitchyBND/Assets/Paramdex/ER")
 langs = ['zhocn', 'jpnjp', 'engus']
 
 # %%
@@ -103,10 +104,112 @@ df2 = (pl.read_csv("tauri-app/src-tauri/assets/boss.csv")
 df2
 
 # %%
-df = (pl.read_csv(stage2_dir / "param/gameparam/NpcParam.csv")
-  .select(['id', 'nameId', 'npcType','teamType', 'moveType', 'vowType','toughness', 'roleNameId', 'loadAssetId', 'behaviorVariationId'])
-  .filter(pl.col('npcType') == 1)
+class Message:
+  def __init__(self, df: pl.DataFrame, *, name: str, dlc_part: str = None):
+    self.df = df
+    self.name = name
+    self.dlc_part = dlc_part
+
+  @staticmethod
+  def load(name: str, *, langs = langs, stage_dir = stage2_dir):
+    dlc_part = name.rsplit('_', 1)[-1]
+    if dlc_part.startswith('dlc'):
+      name = name.removesuffix('_' + dlc_part)
+    else:
+      dlc_part = None
+    data: dict[str, list] = {}
+    for lang in langs:
+      path = Path(stage_dir).joinpath(f"msg/{lang}/{name}.json")
+      with open(path, encoding='utf-8') as f:
+        data[lang] = json.load(f)
+    result = None
+    for lang in langs:
+      df = pl.DataFrame(data[lang], schema_overrides=dict(text=pl.String)).rename(dict(text=f'text_{lang}'))
+      if result is None:
+        result = df
+      else:
+        result = result.join(df, on='id', how='full', coalesce=True)
+    df = result.select(
+      pl.lit(name).alias('tag'),
+      pl.lit(dlc_part, dtype=pl.String).alias('dlc'),
+      pl.col('*'),
+    )
+    return Message(df, name=name, dlc_part=dlc_part)
+
+  def __str__(self) -> str:
+    return f"Message({self.name}: {self.df})"
+
+  def __repr__(self) -> str:
+    return f"Message({self.name}: {self.df.shape})"
+
+msg__npc_name = Message.load('NpcName')
+msg__npc_name.df
+
+messages = [Message.load(path.stem)
+  for path in stage2_dir.joinpath('msg/jpnjp').glob('*.json')]
+msg_all = Message(pl.concat([msg.df for msg in messages]), name='all')
+df_msg_all = msg_all.df
+df_msg_all
+
+# %%
+def search_row(df: pl.DataFrame, message: str) -> pl.DataFrame:
+  import polars_distance as pld
+  result = []
+  for col in df.columns:
+    if col.startswith('text_'):
+      df_result = df.filter(pl.col(col).str.contains(message)).with_columns(
+        distance = pl.lit(message),
+        lang = pl.lit(col.removeprefix('text_')),
+      ).with_columns(
+        pld.col('distance').dist_str.hamming(pl.col(col))
+      )
+      result.append(df_result)
+  return pl.concat(result).sort(
+    'distance', descending=False, nulls_last=True
+  )
+search_row(df_msg_all, 'Banished Knight')
+
+# %%
+class Param:
+  def __init__(self, name: str, *, stage_dir = stage2_dir):
+    self.name = name
+    df = pl.read_csv(stage_dir / f"param/gameparam/{name}.csv")
+    self.names = self.read_names(name)
+    df_name = pl.DataFrame(self.names).rename(dict(id='id', name='row_name'))
+    self.df = df.select('id').join(df_name, on='id', how='left').join(df, on='id', how='left')
+    globals()[f"param__{name}__df"] = self.df
+
+  @staticmethod
+  def read_names(name: str):
+    with open(paramdex_dir / f"Names/{name}.txt") as f:
+      lines = f.readlines()
+    result: list[tuple[int, str]] = []
+    for line in lines:
+      id, name = line.split(' ', 1)
+      result.append({'id': int(id), 'name': name})
+    return result
+
+  def __str__(self) -> str:
+    return f"Param({self.name}: {self.df})"
+
+  def __repr__(self) -> str:
+    return f"Param({self.name}: {self.df.shape})"
+
+param__game_area = Param('GameAreaParam')
+
+# %%
+"""
+consider these 2 lines:
+`12030390,[Deeproot Depths],"Crucible Knight",12020390,`
+`30100801,"[Auriza Hero's Grave] Crucible Knight",30100800,"[Auriza Hero's Grave] Crucible Knight Ordovis"`
+in boss.csv, only 12030390 present, and 30100800/30100801 combines to 30100800
+"""
+dfr__game_area__id_not_equal_defeatbossflagid = (
+param__game_area.df.filter(pl.col("id") != pl.col("defeatBossFlagId"))
+  .join(param__game_area.df, left_on="defeatBossFlagId", right_on="id", suffix="_flag", how="left")
+  .select("id", "row_name", "defeatBossFlagId", "row_name_flag")
 )
-df
+# %%
+search_row(df_msg_all, "Auriza Hero's Grave")
 
 # %%

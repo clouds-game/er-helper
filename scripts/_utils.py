@@ -1,8 +1,8 @@
-import pathlib
-
+from os import PathLike
+from pathlib import Path
 
 path_roots = [
-    pathlib.Path("N:/GR/data/INTERROOT_win64/"),
+  "N:/GR/data/INTERROOT_win64/",
 ]
 
 NameMaps = {
@@ -35,13 +35,11 @@ NameMaps = {
   }
 
 
-def UnrootBNDPath(path: str):
-  path = pathlib.Path(path)
+def UnrootBNDPath(path: PathLike):
+  path = str(path)
   for root in path_roots:
-    try:
-      return (path.relative_to(root), root)
-    except Exception as e:
-      return (path, None)
+    if path.startswith(root):
+      return (path.removeprefix(root), root)
   return (path, None)
 
 

@@ -20,4 +20,8 @@
     <PackageReference Include="System.Runtime.InteropServices" Version="4.3.0" />
     <ProjectReference Include="..\..\vendor\SoulsFormatsNEXT\SoulsFormats\SoulsFormats.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\vendor\WitchyBND\WitchyFormats\WitchyFormats.csproj" />
+  </ItemGroup>
 </Project>

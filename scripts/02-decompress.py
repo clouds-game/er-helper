@@ -7,6 +7,7 @@ setup_clr()
 logger = get_logger(__name__, filename=f'logs/decompress_{today_str()}.log')
 
 import SoulsFormats
+import WitchyFormats
 import UnpackHelper
 import System.IO
 
@@ -15,12 +16,17 @@ game_dir = config['unpack']['src_dir']
 stage1_dir = config['unpack']['stage1_dir']
 stage2_dir = config['unpack']['stage2_dir']
 
-import sys
-UnpackHelper.NativeLibrary.AddToPath(sys.path)
-UnpackHelper.Helper.LoadOodle()
-
 # %%
-def unpack_param(path: PathLike, dst_dir: PathLike, defs_path: PathLike = "vendor/WitchyBND/WitchyBND/Assets/Paramdex/ER/Defs"):
+def cell_value(cell: WitchyFormats.PARAM.Cell):
+  if cell is None:
+    return None
+  if _utils.is_csharp_byte_array(cell.Value):
+    return System.Convert.ToHexString(cell.Value)
+  return cell.Value
+def row_offset(row: WitchyFormats.PARAM.Row):
+  return row.GetType().GetField("DataOffset", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(row)
+
+def unpack_param(path: PathLike, dst_dir: PathLike, defs_path: PathLike = "vendor/WitchyBND/WitchyBND/Assets/Paramdex/ER/Defs", regulation_version: int | None = 0):
   print("Unpack Param", path)
   path, dst_dir, defs_path = Path(path), Path(dst_dir), Path(defs_path)
   exist_names = [path.stem for path in defs_path.glob("*.xml")]
@@ -29,22 +35,31 @@ def unpack_param(path: PathLike, dst_dir: PathLike, defs_path: PathLike = "vendo
   if not paramdef_path.exists():
     logger.error(f"[param] [{path.stem}] Failed to find {paramdef_path}. Skip")
     return
-  param = SoulsFormats.SoulsFile[SoulsFormats.PARAM].Read(str(path))
-  paramDef = SoulsFormats.PARAMDEF.XmlDeserialize(str(paramdef_path))
+  param = UnpackHelper.Format[WitchyFormats.PARAM].OpenFile(str(path))
+  paramDef = WitchyFormats.PARAMDEF.XmlDeserialize(str(paramdef_path), regulation_version is not None)
   # if not param.ApplyParamdefCarefully(paramDef):
     # logger.error(f"[param] [{path.stem}] Failed to apply paramdef to {path.name}")
     # return
-  param.ApplyParamdef(paramDef)
+  if regulation_version is None:
+    param.ApplyParamdef(paramDef)
+  else:
+    if regulation_version == 0:
+      regulation_version = max(*[i.RemovedRegulationVersion for i in paramDef.Fields], *[i.FirstRegulationVersion for i in paramDef.Fields])
+      print(f"Regulation version is not provided, use {regulation_version}")
+    param.ApplyRegulationVersionedParamdef(paramDef, regulation_version)
   data = []
+  schema = [(field.InternalName, regulation_version is None or field.IsValidForRegulationVersion(regulation_version)) for field in paramDef.Fields]
   for row in param.Rows:
     # todo when value is decimal, need to truncate the number
-    tmp = [System.Convert.ToHexString(cell.Value) if _utils.is_csharp_byte_array(
-        cell.Value) else cell.Value for cell in row.Cells]
-    tmp.insert(0, row.ID)
+    tmp = [row.ID, str(row.Name)] + [cell_value(cell) for cell, (_, valid) in zip(row.Cells, schema) if valid]
     data.append(tmp)
-  schema = [field.InternalName for field in param.AppliedParamdef.Fields]
-  schema.insert(0, 'id')
-  df = pl.DataFrame(data, schema=schema, orient='row')
+  columns = ["id", "row_name"] + [name for name, valid in schema if valid]
+  df = pl.DataFrame(data, schema=columns, orient='row')
+  if (df['row_name'] == "").all(ignore_nulls=True) == False:
+    df = df.drop('row_name')
+  # df = df.with_columns(
+  #   __offset = pl.Series(values=[row_offset(row) for row in param.Rows], dtype=pl.UInt32),
+  # )
   target_path = Path(f"{dst_dir}/{path.stem}.csv")
   target_path.parent.mkdir(parents=True, exist_ok=True)
   df.write_csv(target_path)
@@ -137,6 +152,10 @@ def unpack_dcx(path: PathLike, dst_dir: PathLike, just_unzip = False):
         raise Exception(f"Unknown format {format}")
 
 # %%
+import sys
+UnpackHelper.NativeLibrary.AddToPath(sys.path)
+UnpackHelper.Helper.LoadOodle()
+
 msg_src_dir = Path(f"{stage1_dir}/msg")
 msg_dst_dir = Path(f"{stage2_dir}/msg")
 for lang in ["zhocn", "jpnjp", "engus"]:
