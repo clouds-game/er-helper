@@ -47,7 +47,7 @@ def gen_grace(target_path: PathLike, src_dir: PathLike):
     df = df.join(menutext_names[lang], left_on='mapId', right_on='id', how='left').rename(
         {'text': f'mapname_{lang}'})
   df.write_json(target_path)
-gen_grace(f"grace.out.json", stage2_dir)
+gen_grace(f"{ASSET_DIR}/grace.out.json", stage2_dir)
 
 # %%
 def pack_boss():
