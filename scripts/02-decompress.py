@@ -65,6 +65,7 @@ def unpack_param(path: PathLike, dst_dir: PathLike, defs_path: PathLike = "vendo
   df.write_csv(target_path)
   logger.info(f"[param] [{path.stem}] Unpack {path} to {target_path}")
 
+
 # %%
 param_src_dir = Path(f"{stage1_dir}/param/gameparam")
 param_dst_dir = Path(f"{stage2_dir}/param/gameparam")
@@ -92,6 +93,7 @@ def unpack_fmg(path: PathLike, dst_dir: PathLike, data=None):
     json.dump(data, f, indent=2, ensure_ascii=False)
   logger.info(f"[FMG] Unpack {path} to {target_path}")
 
+
 def unpack_tpf(path: PathLike, dst_dir: PathLike, data=None):
   print(f"Unpack TPF {path}")
   path, dst_dir = Path(path), Path(dst_dir)
@@ -103,21 +105,12 @@ def unpack_tpf(path: PathLike, dst_dir: PathLike, data=None):
     target_path = dst_dir.joinpath(f"{texture.Name}.dds")
     System.IO.File.WriteAllBytes(str(target_path), texture.Headerize())
 
-
-def unpack_bnd4(path: PathLike, dst_dir: PathLike, data=None):
-  # 这里有个问题 bnd4文件名是包含路径的 直接根据路径来存
-  # 还是只取单纯的文件名  根据提供的路径来存储(目前是这种)
-  print(f"Unpack BND4 {path}")
-  path, dst_dir = Path(path), Path(dst_dir)
-  logger.info(f"Unpack BND4 {path}")
-  if not data:
-    with open(path, "rb") as f:
-      file_bytes = f.read()
-    data = System.Array[System.Byte](file_bytes)
-  bnd = SoulsFormats.BND4Reader(data)
-  for file in bnd.Files:
-    # (sub_path, root) = utils.UnrootBNDPath(file.Name)
-    data = bnd.ReadFile(file)
+def unpack_binder(binder: SoulsFormats.BinderReader, dst_dir: PathLike, path: PathLike):
+  dst_dir, path = Path(dst_dir), Path(path)
+  for file in binder.Files:
+    data = binder.ReadFile(file)
+    # (sub_path, root) = _utils.UnrootBNDPath(file.Name)
+    logger.info(f"[origin name] {file.Name}")
     # N:\GR\data\INTERROOT_win64\msg\zhoCN\AccessoryInfo.fmg
     target_path = dst_dir.joinpath(f"{str(file.Name).split('\\')[-1]}")
     if data is None:
@@ -131,11 +124,30 @@ def unpack_bnd4(path: PathLike, dst_dir: PathLike, data=None):
       logger.info(f"[{path.name}] Unpack {file.Name} to {target_path}")
 
 
+def unpack_bnd4(path: PathLike, dst_dir: PathLike, data=None):
+  # 这里有个问题 bnd4文件名是包含路径的 直接根据路径来存
+  # 还是只取单纯的文件名  根据提供的路径来存储(目前是这种)
+  path, dst_dir = Path(path), Path(dst_dir)
+  print(f"Unpack BND4 {path}")
+  logger.info(f"Unpack BND4 {path}")
+  data = bytes_to_clr(data, path=path)
+  bnd = SoulsFormats.BND4Reader(data)
+  unpack_binder(bnd, dst_dir, path)
+
+
+def unpack_bxf4(bhd_path: PathLike, dst_dir: PathLike):
+  bhd_path, dst_dir = Path(bhd_path), Path(dst_dir)
+  print(f"Unpack BND4 {bhd_path}")
+  logger.info(f"Unpack BND4 {bhd_path}")
+  bdt_path = Path(str(bhd_path).replace("bhd", "bdt"))
+  bxf = SoulsFormats.BXF4Reader(str(bhd_path), str(bdt_path))
+  unpack_binder(bxf, dst_dir, bhd_path)
+
+
 def unpack_dcx(path: PathLike, dst_dir: PathLike, just_unzip = False):
   print(f"Unpack DCX {path}")
   logger.info(f"Unpack DCX {path}")
   path, dst_dir = Path(path), Path(dst_dir)
-  # to load oo2core_6_win64.dll
   compression = SoulsFormats.DCX.Type.Unknown
   (csharp_bytes, compression) = SoulsFormats.DCX.Decompress(str(path), compression)
   if just_unzip:
@@ -151,6 +163,7 @@ def unpack_dcx(path: PathLike, dst_dir: PathLike, just_unzip = False):
       case _:
         raise Exception(f"Unknown format {format}")
 
+
 # %%
 import sys
 UnpackHelper.NativeLibrary.AddToPath(sys.path)
@@ -161,3 +174,16 @@ msg_dst_dir = Path(f"{stage2_dir}/msg")
 for lang in ["zhocn", "jpnjp", "engus"]:
   for file in msg_src_dir.joinpath(lang).glob('*.dcx'):
     unpack_dcx(file, msg_dst_dir.joinpath(lang))
+
+# %%
+# todo 解压缩menu_icon 00_solo  fromats change in :  bnd -> dcx -> tpf -> bbs
+icons_src_dir = Path(f"{stage1_dir}/menu/hi/00_solo.tpfbhd")
+icons_dst_dir = Path(f"{stage2_dir}/menu/hi/00_solo")
+unpack_bxf4(icons_src_dir, icons_dst_dir)
+
+# %%
+icons_dst_dir = Path(f"{stage2_dir}/menu/hi/00_solo")
+for file in icons_dst_dir.glob('*.dcx'):
+  unpack_dcx(file, icons_dst_dir)
+
+# %%

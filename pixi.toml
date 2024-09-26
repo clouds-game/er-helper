@@ -30,3 +30,4 @@ cmake = ">=3.30.3,<4"
 
 [pypi-dependencies]
 polars-distance = ">=0.4.3, <0.5"
+imageio = ">=2.35.1,<3"

@@ -3,6 +3,7 @@
 pub mod db;
 pub mod sync;
 pub mod save;
+pub mod weapon;
 
 use std::{path::Path, sync::Arc};
 
@@ -47,6 +48,12 @@ async fn get_player_info(state: tauri::State<'_, Arc<MyState>>, selected: Option
   state.get_player_info(selected).map_err(|e| format!("state.get_player_info: {}", e))
 }
 
+#[tauri::command]
+async fn get_equipped_weapon_info(state: tauri::State<'_, Arc<MyState>>) -> Result<crate::weapon::WeaponInfos, String> {
+  let selected = state.get_selected();
+  state.get_equipped_weapon_info(selected).map_err(|e| format!("state.get_equipped_weapon_info: {}", e))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run<P: AsRef<Path>>(path: P) {
   info!("running on file: {}", path.as_ref().display());
@@ -62,6 +69,7 @@ pub fn run<P: AsRef<Path>>(path: P) {
       get_metadata,
       get_basic_info,
       get_player_info,
+      get_equipped_weapon_info,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
