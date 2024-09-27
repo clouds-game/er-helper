@@ -9,11 +9,11 @@ platforms = ["linux-64", "osx-arm64", "win-64"]
 [tasks]
 init = { depends_on = ["init-git", "build-dotnet", "init-clr-typings", "init-tauri"] }
 init-git = "git submodule update --init --recursive && sed 's|${PWD}|'$(pwd)'|g' python.env.in | tee python.env && python scripts/00-a-patch.py"
-init-tauri = "yarn --cwd tauri-app install && python scripts/test.py"
+init-tauri = "yarn --cwd tauri-app install && pixi run python scripts/04-tune.py"
 # this only need in non-windows
 init-oodle = "bash scripts/00-c-init_oodle.sh"
-init-clr-typings = { cmd = "dotnet publish vendor/pythonnet-stub-generator/csharp/PythonNetStubGenerator && python scripts/00-b-gen_typings.py", depends_on = ["build-dotnet"] }
-build-dotnet = "dotnet build && dotnet publish libs/UnpackHelper"
+init-clr-typings = { cmd = "dotnet publish -c Release vendor/pythonnet-stub-generator/csharp/PythonNetStubGenerator && python scripts/00-b-gen_typings.py", depends_on = ["build-dotnet"] }
+build-dotnet = "dotnet build && dotnet publish -c Release libs/UnpackHelper"
 unpack = { cmd = "python scripts/unpack.py", depends_on = ["build-dotnet"] }
 dev-tauri = "yarn --cwd tauri-app tauri dev"
 clean-dotnet = "rm -rf libs/UnpackHelper/bin libs/UnpackHelper/obj vendor/SoulsFormatsNEXT/SoulsFormats/bin vendor/SoulsFormatsNEXT/SoulsFormats/obj vendor/WitchyBND/StudioUtils/bin vendor/WitchyBND/StudioUtils/obj vendor/WitchyBND/WitchyFormats/bin vendor/WitchyBND/WitchyFormats/obj"
