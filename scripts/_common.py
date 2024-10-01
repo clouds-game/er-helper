@@ -44,7 +44,7 @@ def setup_clr(dlls: list[str] = ["UnpackHelper", "SoulsFormats", "WitchyFormats"
   import sys, pathlib
   # enter_project_root()
   pythonnet.load("coreclr")
-  sys.path.append(str(Path("libs/UnpackHelper/bin/Debug/net8.0").absolute()))
+  sys.path.append(str(Path("libs/UnpackHelper/bin/Release/net8.0/publish").absolute()))
   import clr
   for dll in dlls:
     clr.AddReference(dll)

@@ -45,7 +45,8 @@ def unpack_param(path: PathLike, dst_dir: PathLike, defs_path: PathLike = "vendo
   else:
     if regulation_version == 0:
       regulation_version = max(*[i.RemovedRegulationVersion for i in paramDef.Fields], *[i.FirstRegulationVersion for i in paramDef.Fields])
-      print(f"Regulation version is not provided, use {regulation_version}")
+      if regulation_version != 0:
+        print(f"Regulation version is not provided, use {regulation_version}")
     param.ApplyRegulationVersionedParamdef(paramDef, regulation_version)
   data = []
   schema = [(field.InternalName, regulation_version is None or field.IsValidForRegulationVersion(regulation_version)) for field in paramDef.Fields]
