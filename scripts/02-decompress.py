@@ -52,11 +52,11 @@ def unpack_param(path: PathLike, dst_dir: PathLike, defs_path: PathLike = "vendo
   schema = [(field.InternalName, regulation_version is None or field.IsValidForRegulationVersion(regulation_version)) for field in paramDef.Fields]
   for row in param.Rows:
     # todo when value is decimal, need to truncate the number
-    tmp = [row.ID, str(row.Name)] + [cell_value(cell) for cell, (_, valid) in zip(row.Cells, schema) if valid]
+    tmp = [row.ID, str(row.Name) if row.Name is not None else ""] + [cell_value(cell) for cell, (_, valid) in zip(row.Cells, schema) if valid]
     data.append(tmp)
   columns = ["id", "row_name"] + [name for name, valid in schema if valid]
   df = pl.DataFrame(data, schema=columns, orient='row')
-  if (df['row_name'] == "").all(ignore_nulls=True) == False:
+  if df["row_name"].dtype == pl.Null or ((df['row_name'] == "") | (df["row_name"].is_null())).all():
     df = df.drop('row_name')
   # df = df.with_columns(
   #   __offset = pl.Series(values=[row_offset(row) for row in param.Rows], dtype=pl.UInt32),
