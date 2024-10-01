@@ -14,96 +14,154 @@ paramdex_dir = Path("vendor/WitchyBND/WitchyBND/Assets/Paramdex/ER")
 langs = ['zhocn', 'jpnjp', 'engus']
 
 # %%
-def get_names(filenames: list[str]):
-  names = {}
-  for lang in langs:
-    # df = pl.DataFrame(schema={'id': pl.Int64, 'text': pl.String})
-    dfs = []
-    for filename in filenames:
-      msg_path = Path(stage2_dir).joinpath(f"msg/{lang}/{filename}")
-      dfs.append(pl.read_json(msg_path))
-      # dfs.append(pl.read_json(msg_path).with_columns(textstrip=pl.col('text').str.strip_chars()))
-    df = pl.concat(dfs)
-    names[lang] = df
-  return names
+class Message:
+  def __init__(self, df: pl.DataFrame, *, name: str, dlc_part: str = None):
+    self.df = df
+    self.name = name
+    self.dlc_part = dlc_part
 
-def gen_grace(target_path: PathLike, src_dir: PathLike):
-  place_names = get_names(['PlaceName.json', 'PlaceName_dlc01.json'])
-  menutext_names = get_names(['GR_MenuText.json', 'GR_MenuText_dlc01.json'])
+  @staticmethod
+  def load(name: str, *, langs = langs, stage_dir = stage2_dir):
+    file_name = name
+    dlc_part = name.rsplit('_', 1)[-1]
+    if dlc_part.startswith('dlc'):
+      name = name.removesuffix('_' + dlc_part)
+    else:
+      dlc_part = None
+    data: dict[str, list] = {}
+    for lang in langs:
+      path = Path(stage_dir).joinpath(f"msg/{lang}/{file_name}.json")
+      with open(path, encoding='utf-8') as f:
+        data[lang] = json.load(f)
+    result = None
+    for lang in langs:
+      df = pl.DataFrame(data[lang], schema_overrides=dict(text=pl.String)).rename(dict(text=f'text_{lang}'))
+      if result is None:
+        result = df
+      else:
+        result = result.join(df, on='id', how='full', coalesce=True)
+    df = result.select(
+      pl.lit(name).alias('tag'),
+      pl.lit(dlc_part, dtype=pl.String).alias('dlc'),
+      pl.col('*'),
+    )
+    return Message(df, name=name, dlc_part=dlc_part)
 
-  BonfireWarpParam_path = f"{src_dir}/param/gameparam/BonfireWarpParam.csv"
-  BonfireWarpSubCategoryParam_path = f"{src_dir}/param/gameparam/BonfireWarpSubCategoryParam.csv"
-  BonfireWarpParam = pl.read_csv(BonfireWarpParam_path).select(
-    pl.col(['id', 'eventflagId', 'bonfireSubCategoryId']),
-    pl.col('textId1').alias('textId')
-  )
-  BonfireWarpSubCategoryParam = pl.read_csv(BonfireWarpSubCategoryParam_path).select(
-      pl.col('id'), pl.col('textId').alias('mapId'))
-  df = BonfireWarpParam.join(
-      BonfireWarpSubCategoryParam, left_on='bonfireSubCategoryId', right_on='id')
-  for lang in langs:
-    df = df.join(place_names[lang], left_on='textId', right_on='id', how='left').rename(
-        {'text': f'name_{lang}'})
-    df = df.join(menutext_names[lang], left_on='mapId', right_on='id', how='left').rename(
-        {'text': f'mapname_{lang}'})
-  df.write_json(target_path)
-gen_grace(f"{ASSET_DIR}/grace.out.json", stage2_dir)
+  def __str__(self) -> str:
+    return f"Message({self.name}: {self.df})"
+
+  def __repr__(self) -> str:
+    return f"Message({self.name}: {self.df.shape})"
+
+  def __getitem__(self, index: str) -> pl.DataFrame:
+    return self.df.filter(pl.col('tag') == index)#.unique(pl.all().exclude('dlc'), keep='last', maintain_order=True)
+
+def msg_rename_prefix_dict(prefix: str, langs = langs):
+  return {f'text_{lang}': f'{prefix}_{lang}' for lang in langs}
+
+# msg__npc_name = Message.load('NpcName')
+# msg__npc_name.df
+
+def load_mesaages(name_list: list[str] = None, *, stage_dir = stage2_dir, langs=langs, dlc = True) -> Message:
+  if name_list is None:
+    name_list = [path.stem for path in stage_dir.joinpath('msg/jpnjp').glob('*.json')]
+  elif dlc:
+    name_list = [f"{name}{dlc}" for name in name_list for dlc in ['', '_dlc01', '_dlc02']]
+  messages = [Message.load(name, langs=langs) for name in name_list]
+  return Message(pl.concat([msg.df for msg in messages]), name=f'all[{len(name_list)}]')
+
+df_msg_all = load_mesaages().df
 
 # %%
-def pack_boss():
+def gen_grace(stage_dir: PathLike, *, langs = langs):
+  df_msg = load_mesaages(['PlaceName', 'GR_MenuText'], stage_dir=stage_dir)
+
+  BonfireWarpParam_path = f"{stage_dir}/param/gameparam/BonfireWarpParam.csv"
+  BonfireWarpSubCategoryParam_path = f"{stage_dir}/param/gameparam/BonfireWarpSubCategoryParam.csv"
+  BonfireWarpParam = pl.read_csv(BonfireWarpParam_path).select(
+    id = 'id',
+    map_id = 'bonfireSubCategoryId',
+    eventflag_id = 'eventflagId',
+    text_id = 'textId1',
+  )
+  BonfireWarpSubCategoryParam = pl.read_csv(BonfireWarpSubCategoryParam_path).select(
+    id = 'id', map_text_id = 'textId')
+  df = BonfireWarpParam.join(
+    BonfireWarpSubCategoryParam, left_on='map_id', right_on='id', how='left')
+  langs_col = [f'text_{lang}' for lang in langs]
+  df = df.join(df_msg['PlaceName'], left_on='text_id', right_on='id', suffix="_name", how='left').rename(
+    msg_rename_prefix_dict('name', langs)
+  )
+  df = df.join(df_msg['GR_MenuText'].select('id', *langs_col), left_on='map_text_id', right_on='id', suffix="_mapname", how='left').rename(
+    msg_rename_prefix_dict('mapname', langs)
+  )
+  assert(df.shape[0] == BonfireWarpParam.shape[0])
+  return df
+df_grace = gen_grace(stage2_dir)
+df_grace.write_csv(f"{ASSET_DIR}/graces.csv", quote_style='non_numeric')
+
+# %%
+def gen_boss():
   pass
 
-def pack_weapon(target_path: PathLike, src_dir: PathLike):
-  weapon_names = (pl.concat([pl.read_json(f"{src_dir}/msg/zhocn/{filename}.json") for filename in ["WeaponName", "WeaponName_dlc01"]])
-                  .filter([pl.col('text').is_not_null(), pl.col('text') != '[ERROR]']))
-  EquipParamWeapon = (pl.read_csv(f"{src_dir}/param/gameparam/EquipParamWeapon.csv").select(['id', 'iconId', 'wepType'])
-                      .rename({'iconId': 'icon_id', 'wepType': 'wep_type'}))
-  df = EquipParamWeapon.join(
-      weapon_names, left_on='id', right_on='id').rename({'text': "name"})
-  df.write_json(target_path)
-  icon_ids = [row['icon_id'] for row in df.iter_rows(named=True)]
-  icon_ids = list(set(icon_ids))
-  return icon_ids
+# %%
+def pack_weapon_icons(src_dir: PathLike, dst_dir: PathLike, icon_ids: list[int], force = False, progress=True) -> list[str]:
+  # from PIL import Image
+  import imageio.v3 as imageio
 
-
-def pack_weapon_icons(src_dir: Path, dst_dir: Path,icon_ids: list[int], progress=True):
-  from PIL import Image
-  import imageio.v2 as imageio
-
-  icon_ids = list(set(icon_ids))
   if progress:
     import tqdm
-    bar = tqdm.tqdm(total=len(icon_ids), desc="change format")
+    bar = tqdm.tqdm(total=len(icon_ids), desc="weapon icons")
+  files = {}
   for icon_id in icon_ids:
-    icon_file = src_dir.joinpath(f"MENU_Knowledge_{icon_id:05d}.dds")
-    target_file = dst_dir.joinpath(icon_file.stem).with_suffix('.png')
+    icon_file = f"{src_dir}/MENU_Knowledge_{icon_id:05d}.dds"
+    target_file = f"{dst_dir}/icons_{icon_id:05d}.png"
+    if not force and Path(target_file).exists():
+      files[icon_id] = target_file
+      if progress: bar.update()
+      continue
     try:
-      image_array = imageio.imread(icon_file)
-      image = Image.fromarray(image_array)
-      image.save(target_file)
+      img = imageio.imread(icon_file)
+      imageio.imwrite(target_file, img)
+      files[icon_id] = target_file
     except Exception as e:
       logger.error(f"[ weapon_icon ] Change format failed {icon_file} -> {target_file} error : {e}")
       continue
-    if progress:
-      bar.update()
+    if progress: bar.update()
     logger.info(f"[ weapon_icon ] Change format {icon_file} -> {target_file}")
+  return files
 
-icon_ids = pack_weapon(f"{ASSET_DIR}/weapon.out.json", stage2_dir)
-pack_weapon_icons(Path(f"{stage2_dir}/menu/hi/00_solo"), Path(f"{ASSET_DIR}/icons"), icon_ids)
-
+def gen_weapon(stage_dir: PathLike, *, langs = langs, icon_path: PathLike = None):
+  df_msg = load_mesaages(['WeaponName'], stage_dir=stage_dir)
+  EquipParamWeapon = pl.read_csv(f"{stage_dir}/param/gameparam/EquipParamWeapon.csv").select(
+    id = 'id', icon_id='iconId', type='wepType',
+  )
+  df = EquipParamWeapon.join(
+    df_msg.df, on='id', how='left').rename(msg_rename_prefix_dict('name', langs))
+  if icon_path is not None:
+    icon_ids = df['icon_id'].unique().to_list()
+    Path(icon_path).mkdir(parents=True, exist_ok=True)
+    files = pack_weapon_icons(f"{stage_dir}/menu/hi/00_solo", icon_path, icon_ids)
+    df_files = pl.DataFrame(list(files.items()), schema={'icon_id': pl.Int64, 'path': pl.String}, orient='row')
+    df = df.join(df_files, on='icon_id', how='left', )
+  return df
+df_weapon = gen_weapon(stage2_dir, icon_path=f"{ASSET_DIR}/icons")
+df_weapon.with_columns(path = pl.col("path").str.strip_prefix(ASSET_DIR+"/")).write_csv(f"{ASSET_DIR}/weapons.csv", quote_style='non_numeric')
 
 # %%
-def find_in_msg(d, lang = 'engus', src_dir: PathLike = stage2_dir):
-  path = Path(src_dir).joinpath(f"msg/{lang}")
-  name = 'id' if isinstance(d, int) else 'text'
-  for file in path.glob('*.json'):
-    with open(file, encoding='utf-8') as f:
-      data = json.load(f)
-      for x in data:
-        if d == x[name]:
-          print(file, x)
-  print('done')
-
+def find_in_msg(d, lang = None):
+  if type(d) is str:
+    if lang is None:
+      return df_msg_all.filter(
+        pl.any_horizontal(pl.col(pl.String).exclude('tag', 'dlc').str.contains(d))
+      )
+    return df_msg_all.filter(
+      pl.col(f'text_{lang}').str.contains(str(d))
+    )
+  elif type(d) is int:
+    return df_msg_all.filter(
+      pl.col('id') == d
+    )
 
 def find_in_param(s, src_dir: PathLike = stage2_dir):
   s = str(s)
@@ -120,7 +178,7 @@ def find_in_param(s, src_dir: PathLike = stage2_dir):
 
 # find_in_msg("Adan, Thief of Fire")
 # find_in_param(523000000)
-find_in_msg(34010000, 'zhocn')
+find_in_msg(34010000)
 # find_in_msg(903350313)
 # 135600
 # find_in_param(36602338)
@@ -147,52 +205,6 @@ df2 = (pl.read_csv("tauri-app/src-tauri/assets/boss.csv")
 df2
 
 # %%
-class Message:
-  def __init__(self, df: pl.DataFrame, *, name: str, dlc_part: str = None):
-    self.df = df
-    self.name = name
-    self.dlc_part = dlc_part
-
-  @staticmethod
-  def load(name: str, *, langs = langs, stage_dir = stage2_dir):
-    dlc_part = name.rsplit('_', 1)[-1]
-    if dlc_part.startswith('dlc'):
-      name = name.removesuffix('_' + dlc_part)
-    else:
-      dlc_part = None
-    data: dict[str, list] = {}
-    for lang in langs:
-      path = Path(stage_dir).joinpath(f"msg/{lang}/{name}.json")
-      with open(path, encoding='utf-8') as f:
-        data[lang] = json.load(f)
-    result = None
-    for lang in langs:
-      df = pl.DataFrame(data[lang], schema_overrides=dict(text=pl.String)).rename(dict(text=f'text_{lang}'))
-      if result is None:
-        result = df
-      else:
-        result = result.join(df, on='id', how='full', coalesce=True)
-    df = result.select(
-      pl.lit(name).alias('tag'),
-      pl.lit(dlc_part, dtype=pl.String).alias('dlc'),
-      pl.col('*'),
-    )
-    return Message(df, name=name, dlc_part=dlc_part)
-
-  def __str__(self) -> str:
-    return f"Message({self.name}: {self.df})"
-
-  def __repr__(self) -> str:
-    return f"Message({self.name}: {self.df.shape})"
-
-msg__npc_name = Message.load('NpcName')
-msg__npc_name.df
-
-messages = [Message.load(path.stem)
-  for path in stage2_dir.joinpath('msg/jpnjp').glob('*.json')]
-msg_all = Message(pl.concat([msg.df for msg in messages]), name='all')
-df_msg_all = msg_all.df
-df_msg_all
 
 # %%
 def search_row(df: pl.DataFrame, message: str) -> pl.DataFrame:
