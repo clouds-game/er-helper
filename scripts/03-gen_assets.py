@@ -56,8 +56,21 @@ class Message:
   def __getitem__(self, index: str) -> pl.DataFrame:
     return self.df.filter(pl.col('tag') == index)#.unique(pl.all().exclude('dlc'), keep='last', maintain_order=True)
 
-def msg_rename_prefix_dict(prefix: str, langs = langs):
+def msg_rename_with_prefix(prefix: str, langs = None):
+  if langs is None:
+    def _rename(col_name: str) -> str:
+      return f'{prefix}_{col_name.removeprefix("text_")}' if col_name.startswith('text_') else col_name
+    return _rename
   return {f'text_{lang}': f'{prefix}_{lang}' for lang in langs}
+
+def read_paramdex_names(name: str, paramdex_dir: PathLike = paramdex_dir) -> list[dict]:
+  with open(paramdex_dir / f"Names/{name}.txt") as f:
+    lines = f.readlines()
+  result: list[tuple[int, str]] = []
+  for line in lines:
+    id, name = line.split(' ', 1)
+    result.append({'id': int(id), 'name': name.strip('\n')})
+  return result
 
 # msg__npc_name = Message.load('NpcName')
 # msg__npc_name.df
@@ -70,7 +83,8 @@ def load_mesaages(name_list: list[str] = None, *, stage_dir = stage2_dir, langs=
   messages = [Message.load(name, langs=langs) for name in name_list]
   return Message(pl.concat([msg.df for msg in messages]), name=f'all[{len(name_list)}]')
 
-df_msg_all = load_mesaages().df
+msg_all = load_mesaages()
+df_msg_all = msg_all.df
 
 # %%
 def gen_grace(stage_dir: PathLike, *, langs = langs):
@@ -90,10 +104,10 @@ def gen_grace(stage_dir: PathLike, *, langs = langs):
     BonfireWarpSubCategoryParam, left_on='map_id', right_on='id', how='left')
   langs_col = [f'text_{lang}' for lang in langs]
   df = df.join(df_msg['PlaceName'], left_on='text_id', right_on='id', suffix="_name", how='left').rename(
-    msg_rename_prefix_dict('name', langs)
+    msg_rename_with_prefix('name', langs)
   )
   df = df.join(df_msg['GR_MenuText'].select('id', *langs_col), left_on='map_text_id', right_on='id', suffix="_mapname", how='left').rename(
-    msg_rename_prefix_dict('mapname', langs)
+    msg_rename_with_prefix('mapname', langs)
   )
   assert(df.shape[0] == BonfireWarpParam.shape[0])
   return df
@@ -137,7 +151,7 @@ def gen_weapon(stage_dir: PathLike, *, langs = langs, icon_path: PathLike = None
     id = 'id', icon_id='iconId', type='wepType',
   )
   df = EquipParamWeapon.join(
-    df_msg.df, on='id', how='left').rename(msg_rename_prefix_dict('name', langs))
+    df_msg.df, on='id', how='left').rename(msg_rename_with_prefix('name', langs))
   if icon_path is not None:
     icon_ids = df['icon_id'].unique().to_list()
     Path(icon_path).mkdir(parents=True, exist_ok=True)
@@ -178,15 +192,20 @@ def find_in_param(s, src_dir: PathLike = stage2_dir):
 
 # find_in_msg("Adan, Thief of Fire")
 # find_in_param(523000000)
-find_in_msg(34010000)
+# find_in_msg(241410)
 # find_in_msg(903350313)
 # 135600
-# find_in_param(36602338)
+find_in_param(63002)
 # %%
 df = pl.read_csv(stage2_dir / "param/gameparam/GameAreaParam.csv").select(
-  'id', 'defeatBossFlagId', 'bossMapAreaNo', 'bossMapBlockNo',
-  'bossMapMapNo', 'displayAimFlagId', 'bossChallengeFlagId', 'notFindBossTextId',
+  id = 'id',
+  eventflag_id = 'defeatBossFlagId',
+  pos_x = 'bossPosX',
+  pos_y = 'bossPosY',
+  pos_z = 'bossPosZ',
+  map_efid = pl.concat_str(pl.col('bossMapAreaNo', 'bossMapBlockNo', 'bossMapMapNo').cast(pl.String).str.pad_start(2, '0'), separator='_'),
 )
+
 df
 
 # %%
@@ -229,20 +248,10 @@ class Param:
   def __init__(self, name: str, *, stage_dir = stage2_dir):
     self.name = name
     df = pl.read_csv(stage_dir / f"param/gameparam/{name}.csv")
-    self.names = self.read_names(name)
+    self.names = read_paramdex_names(name)
     df_name = pl.DataFrame(self.names).rename(dict(id='id', name='row_name'))
     self.df = df.select('id').join(df_name, on='id', how='left').join(df, on='id', how='left')
     globals()[f"param__{name}__df"] = self.df
-
-  @staticmethod
-  def read_names(name: str):
-    with open(paramdex_dir / f"Names/{name}.txt") as f:
-      lines = f.readlines()
-    result: list[tuple[int, str]] = []
-    for line in lines:
-      id, name = line.split(' ', 1)
-      result.append({'id': int(id), 'name': name})
-    return result
 
   def __str__(self) -> str:
     return f"Param({self.name}: {self.df})"
@@ -251,6 +260,128 @@ class Param:
     return f"Param({self.name}: {self.df.shape})"
 
 param__game_area = Param('GameAreaParam')
+param__sign_puddle = Param('SignPuddleParam')
+param__sign_puddle1 = Param('SignPuddleSubCategoryParam')
+param__sign_puddle2 = Param('SignPuddleTabParam')
+
+# %%
+df_puddle = (
+  param__sign_puddle.df.select(
+    id = 'id',
+    row_name = 'row_name',
+    area_id = 'matchAreaId',
+    area_sub_id = 'signSubCategoryId',
+    map_efid = pl.concat_str(pl.col('areaNo', 'gridXNo', 'gridZNo').cast(pl.String).str.pad_start(2, '0'), separator='_'),
+    text_id = 'locationTextId',
+  )
+  .join(msg_all['PlaceName'], left_on='text_id', right_on='id', how='left').drop('tag', 'dlc', 'text_jpnjp', 'text_engus').rename(msg_rename_with_prefix('name'))
+  .join(param__sign_puddle1.df.select(area_sub_id='id', area_sub_text_id='signPuddleCategoryText', area_tab_id = 'signPuddleTabId'), on='area_sub_id', how='left')
+  .join(msg_all['GR_MenuText'], left_on='area_sub_text_id', right_on='id', how='left').drop('tag', 'dlc', 'text_jpnjp', 'text_engus').rename(msg_rename_with_prefix('area_name'))
+  .join(param__sign_puddle2.df.select(area_tab_id='id', dlc='isDlcTab', area_tab_text_id='tabTextId'), on='area_tab_id', how='left')
+  .join(msg_all['GR_MenuText'], left_on='area_tab_text_id', right_on='id', how='left').drop('tag', 'dlc_right', 'text_jpnjp', 'text_engus').rename(msg_rename_with_prefix('tab_name'))
+)
+df_puddle
+
+# %%
+place_map = {
+  'Liurnia Highway Far North': "Liurnia Highway North",
+  'Liurnia - Meeting Place': "Temple Quarter",
+  'Albinauric Village': 'Village of the Albinaurics',
+  'Gate Town Northwest': "Gate Town North",
+  'Erdtree-Gazing Hill- Lux Ruins': "Erdtree-Gazing Hill",
+  'Shaded Castle': "The Shaded Castle",
+  # 'South of Tree Sentinel Duo': "Sellia Crystal Tunnel",
+}
+npc_map = {
+  'Hoarah Loux': 'Hoarah Loux, Warrior',
+  'Loretta, Royal Knight': 'Loretta, Knight of the Haligtree',
+  'Sir Gideon Ofnir': 'Sir Gideon Ofnir, the All-Knowing',
+  'Dragonkin Soldier of Nokron': 'Dragonkin Soldier of Nokstella',
+  'Godrick the Reskinned': 'Godrick the Grafted',
+  'Demi-Human Queen': 'Demi-Human Queen Gilika', # the other 3 "Demi-Human Queen" are all named (Margot, Marigga, Maggie), this one is at "Altus Plateau - Erdtree-Gazing Hill- Lux Ruins"
+  'Ancient Dragon': 'Ancient Dragon Lansseax', # Lansseax has 2 stage, this one is at "Altus Plateau - Altus Tunnel Entrance", (Florissax is not a boss)
+  'Dragonkin Soldier (Lake of Rot)': 'Dragonkin Soldier',
+  'Jori, the Elder Inquisitor': 'Jori, Elder Inquisitor',
+  'Tree Sentinel - Torch': 'Tree Sentinel',
+  'Abductor Virgin': 'Abductor Virgin (Swinging Sickle)', # TODO: remove "()"" for these "s", another is "Abductor Virgin (Wheel)"
+  'Ulcerated Tree Sprit': 'Ulcerated Tree Spirit', # note: "Spirit" misspelled
+  'Battlenage': 'Battlemage Hugues', # note: "battlemage" misspelled
+  'Nox Swordress & Nok Monk': 'Nox Monk', # note: "Nox Swordstress" misspelled
+  # "Crucible Illusion"
+}
+
+def new_search(df_msg: pl.DataFrame, *, id_col = 'id', name_col = 'text_engus', query_fn = None, mapping = None):
+  df_msg = df_msg.with_columns(
+    normalized_name = pl.col(name_col).str.replace_all("'s ", '').str.replace_all('-', '').str.replace_all(',', '').str.replace_all(' ', '').str.to_lowercase()
+  )
+  def normalize(s: str):
+    return s.replace("'s ", '').replace('-', '').replace(',', '').replace(' ', '').lower()
+  def _search_normalized(name: str):
+    df1 = df_msg.filter(pl.col(name_col) == name)
+    if not df1.is_empty(): return df1
+    df1 = df_msg.filter(pl.col('normalized_name') == normalize(name))
+    return df1
+  def _search(name: str):
+    if query_fn is not None:
+      query_names = query_fn(name)
+    else:
+      query_names = query_mapping(name)
+    print(query_names)
+    for name in query_names:
+      df1 = _search_normalized(name)
+      if not df1.is_empty():
+        return df1[0, id_col]
+  return _search
+
+def query_mapping(name: str, mapping: dict[str, str]) -> list[str]:
+  if name is None or name == '': return []
+  result = [name]
+  if mapping is not None and name in mapping:
+    result.append(mapping[name])
+    return result
+  return result
+
+def query_place_name(name: str, *, mapping = place_map) -> list[str]:
+  result = query_mapping(name, mapping)
+  if len(result) > 1: return result
+  if ' - ' in name:
+    name2 = name.split(' - ', 1)[-1]
+    result.extend(query_place_name(name2, mapping=mapping))
+  suffix = [' Entrance', ' Midway']
+  for s in suffix:
+    if name.endswith(s):
+      name2 = name.removesuffix(s)
+      result.extend(query_place_name(name2, mapping=mapping))
+  return result
+
+def query_npc_name(name: str, *, mapping = npc_map) -> list[str]:
+  result = query_mapping(name, mapping)
+  if len(result) > 1: return result
+  suffix = ['s', ' (Solo)', " (Duo)"]
+  for s in suffix:
+    if name.endswith(s):
+      name2 = name.removesuffix(s)
+      result.extend(query_place_name(name2, mapping=mapping))
+  return result
+
+df = (param__game_area.df
+  .with_columns(__tmp_split = pl.col('row_name').str.strip_prefix('[').str.split_exact('] ', 1))
+  .unnest('__tmp_split').rename(dict(field_0='map_name', field_1='npc_name'))
+  .with_columns(
+    map_text_id = pl.col('map_name').map_elements(new_search(msg_all['PlaceName'], mapping=place_map, query_fn=query_place_name), return_dtype=pl.Int64),
+  )
+  .with_columns(
+    npc_text_id = pl.col('npc_name').map_elements(new_search(msg_all['NpcName'], mapping=npc_map, query_fn=query_npc_name), return_dtype=pl.Int64),
+  )
+  .join(msg_all['NpcName'].select(npc_text_id1='id', npc_name='text_engus'), on='npc_name', how='left')
+  .join(msg_all['PlaceName'], left_on='map_text_id', right_on='id', how='left').drop('tag', 'dlc', 'text_jpnjp', 'text_engus').rename(msg_rename_with_prefix('mapname'))
+  .join(msg_all['NpcName'], left_on='npc_text_id', right_on='id', how='left').drop('tag', 'dlc', 'text_jpnjp', 'text_engus').rename(msg_rename_with_prefix('name'))
+)
+dfr__game_area__unknown_map_name = df.filter((pl.col('map_name').is_not_null()) &(pl.col("map_name")!="")&(pl.col('map_text_id').is_null())).unique(['map_name', 'npc_name'])
+dfr__game_area__unknown_npc_name = df.filter((pl.col('npc_name').is_not_null()) &(pl.col("npc_name")!="")&(pl.col('npc_text_id').is_null())).unique('npc_name')
+dfr__game_area__unknown_map_name
+# %%
+df_puddle.group_by('map_efid', 'area_sub_id').len().group_by('map_efid').len().sort('len')
 
 # %%
 """
@@ -264,7 +395,4 @@ param__game_area.df.filter(pl.col("id") != pl.col("defeatBossFlagId"))
   .join(param__game_area.df, left_on="defeatBossFlagId", right_on="id", suffix="_flag", how="left")
   .select("id", "row_name", "defeatBossFlagId", "row_name_flag")
 )
-# %%
-search_row(df_msg_all, "Auriza Hero's Grave")
-
-# %%
+dfr__game_area__id_not_equal_defeatbossflagid
