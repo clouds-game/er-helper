@@ -1,6 +1,6 @@
 use std::{path::PathBuf, sync::{atomic::{AtomicU64, AtomicUsize, Ordering}, Mutex}};
 
-use crate::Result;
+use crate::{cache::Cache, Result};
 
 
 #[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
@@ -17,6 +17,7 @@ pub struct MyState {
   pub selected: AtomicUsize,
   pub save: Mutex<Option<er_save_lib::Save>>,
   pub loaded_time: AtomicU64,
+  pub cache: Cache,
 }
 
 impl MyState {
@@ -56,6 +57,44 @@ impl MyState {
 
   pub fn get_metadata(&self) -> Metadata {
     self.metadata.lock().unwrap().clone()
+  }
+
+  pub fn loaded_version(&self) -> u64 {
+    self.loaded_time.load(Ordering::Relaxed)
+  }
+
+  pub fn get_from_cache<T: 'static + Clone + Send>(&self) -> Option<T> {
+    let current_version = self.loaded_version();
+    let (ref_, version) = self.cache.get::<T>(None);
+    if current_version > version {
+      None
+    } else if let Some(ref_) = ref_ {
+      Some(ref_.clone())
+    } else {
+      None
+    }
+  }
+
+  pub fn get_from_cache_or_save<T: 'static + Clone + Send + Sync>(&self) -> Result<T>
+  where
+    T: for<'a> TryFrom<&'a er_save_lib::Save>,
+    for<'a> <T as TryFrom<&'a er_save_lib::Save>>::Error: std::fmt::Display,
+  {
+    if let Some(value) = self.get_from_cache::<T>() {
+      return Ok(value);
+    }
+    let current_version = self.loaded_version();
+    let save = self.save.lock().unwrap();
+    let Some(save) = save.as_ref() else {
+      anyhow::bail!("no save loaded");
+    };
+    info!("convert from save and save cache: {} (version: {})", std::any::type_name::<T>(), current_version);
+    let value = match T::try_from(save) {
+      Ok(value) => value,
+      Err(e) => anyhow::bail!("failed to convert save to {}: {}", std::any::type_name::<T>(), e),
+    };
+    self.cache.insert(value.clone(), current_version);
+    Ok(value)
   }
 }
 

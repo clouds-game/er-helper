@@ -110,14 +110,16 @@ impl From<(&Profile, &UserDataX)> for PlayerMetaInfo {
 }
 
 impl MyState {
+  pub fn get_meta_info(&self) -> Result<MetaInfo> {
+    self.get_from_cache_or_save::<MetaInfo>()
+  }
+
   pub fn get_selected(&self) -> usize {
     let selected = self.selected.load(std::sync::atomic::Ordering::SeqCst);
     if selected == usize::MAX {
-      let save = self.save.lock().unwrap();
-      let Some(save) = Option::as_ref(&save) else {
+      let Ok(meta_info) = self.get_meta_info() else {
         return 0;
       };
-      let meta_info = MetaInfo::from(save);
       meta_info.active_slot
     } else {
       selected
@@ -125,28 +127,12 @@ impl MyState {
   }
 
   pub fn get_basic_info(&self, selected: usize) -> Result<crate::BasicInfo> {
-    let save = self.save.lock().unwrap();
-    let Some(save) = Option::as_ref(&save) else {
-      anyhow::bail!("no save loaded");
-    };
-    let meta_info = MetaInfo::from(save);
+    let meta_info = self.get_meta_info()?;
     let player_info = &meta_info.player_infos[selected];
     Ok(crate::BasicInfo {
-      nickname: "miao".to_string(),
       role_name: player_info.name.to_string(),
       duration: player_info.duration as u64,
       steam_id: meta_info.steam_id.to_string(),
-    })
-  }
-
-  pub fn get_player_info(&self, selected: usize) -> Result<crate::BasicPlayerInfo> {
-    let save = self.save.lock().unwrap();
-    let Some(save) = Option::as_ref(&save) else {
-      anyhow::bail!("no save loaded");
-    };
-    let meta_info = MetaInfo::from(save);
-    let player_info = &meta_info.player_infos[selected];
-    Ok(crate::BasicPlayerInfo {
       level: player_info.level as _,
       rune: player_info.runes as _,
       boss: player_info.boss as _,

@@ -39,6 +39,21 @@ const latest_time_str = computed(() => {
   return timeago.format(state.time.latest, timeago_locale.value)
 })
 
+const basic_names = computed(() => ({
+  // nickname: state.basic_info.nickname,
+  role_name: state.basic_info.role_name,
+  duration: state.basic_info.duration,
+  steam_id: state.basic_info.steam_id,
+}))
+
+const basic_number = computed(() => ({
+  level: state.basic_info.level,
+  rune: state.basic_info.rune,
+  boss: state.basic_info.boss,
+  grace: state.basic_info.grace,
+  death: state.basic_info.death,
+}))
+
 const add_points = computed(() => {
   return {
     vigor: 100,
@@ -60,13 +75,13 @@ const add_points = computed(() => {
       {{ t('message.update_at', [latest_time_str]) }}
     </Banner>
     <div class="col-span-4">
-      <PlayerCard :nickname="state.basic_names.nickname" :role_name="state.basic_names.role_name" :duration="state.basic_names.duration" :steam_id="state.basic_names.steam_id" />
+      <PlayerCard :nickname="state.nickname ?? ''" :role_name="basic_names.role_name" :duration="basic_names.duration" :steam_id="basic_names.steam_id" />
     </div>
-    <NumberInfo :title="t('game.level')" :value="state.basic_number.level" />
-    <NumberInfo :title="t('ui.current_runes')" :value="state.basic_number.rune" />
-    <NumberInfo :title="t('ui.defeated_boss')" :value="state.basic_number.boss" />
-    <NumberInfo :title="t('ui.unlocked_graces')" :value="state.basic_number.grace" />
-    <NumberInfoBanner class="col-span-4" text_keypath="message.death_times" :value="state.basic_number.death" />
+    <NumberInfo :title="t('game.level')" :value="basic_number.level" />
+    <NumberInfo :title="t('ui.current_runes')" :value="basic_number.rune" />
+    <NumberInfo :title="t('ui.defeated_boss')" :value="basic_number.boss" />
+    <NumberInfo :title="t('ui.unlocked_graces')" :value="basic_number.grace" />
+    <NumberInfoBanner class="col-span-4" text_keypath="message.death_times" :value="basic_number.death" />
     <div class="m-1 col-span-2">
       <div>{{ t("ui.status") }}</div>
     </div>

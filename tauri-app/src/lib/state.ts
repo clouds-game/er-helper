@@ -17,13 +17,11 @@ export const useState = defineStore("state", () => {
     last_modified: 0,
     size: 0,
   })
-  const basic_names = ref({
-    nickname: 'LOADING...',
-    role_name: '',
+  const nickname = ref(localStorage.getItem('nickname'))
+  const basic_info = ref({
+    role_name: 'LOADING...',
     duration: 0,
     steam_id: '',
-  })
-  const basic_number = ref({
     level: 0,
     rune: 0,
     boss: 0,
@@ -47,8 +45,10 @@ export const useState = defineStore("state", () => {
   const update = async () => {
     try {
       metadata.value = await invoke("get_metadata")
-      basic_names.value = await invoke("get_basic_info")
-      basic_number.value = await invoke("get_player_info")
+      basic_info.value = await invoke("get_basic_info")
+      if (nickname.value == null) {
+        nickname.value = basic_info.value.role_name + '#' + basic_info.value.steam_id.slice(-4)
+      }
       time.value.current = new Date(metadata.value.last_modified * 1000)
       time.value.queried = new Date()
     } catch (e) {
@@ -78,13 +78,19 @@ export const useState = defineStore("state", () => {
   watch(() => metadata.value.last_modified, () => {
     time.value.latest = new Date(metadata.value.last_modified * 1000)
   })
+  watch(nickname, (new_nickname) => {
+    if (new_nickname == null)
+      localStorage.removeItem('nickname')
+    else
+      localStorage.setItem('nickname', new_nickname)
+  })
 
   return {
     metadata,
-    basic_names,
-    basic_number,
+    basic_info,
     equipped_weapon_infos,
     time,
+    nickname,
     update,
     update_equipped_weapons
   }
