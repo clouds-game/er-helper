@@ -108,3 +108,30 @@ export const ButtonLanguage = defineComponent<{
   name: "ButtonLanguage",
   props: ["current"],
 })
+
+export const HealthBar = defineComponent<{
+  title: string,
+  status: {
+    current: number,
+    max: number,
+    base: number,
+  },
+  color: 'red' | 'green' | 'blue'
+}>((props) => {
+  const percent = props.status.current / props.status.max * 100
+  const style = {
+    red: "bg-red-400",
+    green: "bg-green-400",
+    blue: "bg-blue-400",
+  }
+  return () => <tr class="m-1 p-1">
+    <td class="w-1 text-nowrap"><span>{props.title}</span></td>
+    <td class="p-1"><div class="bg-gray-200 h-1">
+      <div class={style[props.color]} style={{ width: `${percent}%`, height: "90%" }}></div>
+    </div></td>
+    <td class="text-right w-1 text-nowrap"><span>{props.status.current}/{props.status.max}</span></td>
+  </tr>
+}, {
+  name: "HealthBar",
+  props: ["title", "status", "color"]
+})

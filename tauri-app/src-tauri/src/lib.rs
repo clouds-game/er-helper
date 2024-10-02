@@ -29,6 +29,10 @@ pub struct BasicInfo {
   pub boss: u64,
   pub grace: u64,
   pub death: u64,
+  pub attrs: [u32; 8],
+  pub hp: [u32; 3],
+  pub fp: [u32; 3],
+  pub sp: [u32; 3],
 }
 
 #[tauri::command]

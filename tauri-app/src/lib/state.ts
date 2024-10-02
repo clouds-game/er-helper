@@ -10,6 +10,8 @@ export interface WeaponInfo {
   wep_type?: number
 }
 
+const array_new = (length: number) => Array.from({ length }, () => 0)
+
 export const useState = defineStore("state", () => {
   console.log("state store created")
   const metadata = ref({
@@ -27,6 +29,10 @@ export const useState = defineStore("state", () => {
     boss: 0,
     grace: 0,
     death: 0,
+    attrs: array_new(8),
+    hp: array_new(3),
+    fp: array_new(3),
+    sp: array_new(3),
   })
   const equipped_weapon_infos = ref<{
     lefthand: WeaponInfo[];

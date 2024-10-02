@@ -27,6 +27,10 @@ export const messages = {
       attr_faith: "Faith",
       attr_arcane: "Arcane",
 
+      hp: "Hit Point",
+      fp: "Focus Point",
+      sp: "Stamina",
+
       site_of_grace: "Site of Grace | Site of Graces",
     },
     message: {
@@ -63,6 +67,10 @@ export const messages = {
       attr_faith: "信仰",
       attr_arcane: "感应",
 
+      hp: "血量",
+      fp: "专注值",
+      sp: "精力",
+
       site_of_grace: "赐福",
     },
     message: {
@@ -98,6 +106,10 @@ export const messages = {
       attr_intelligence: "知力",
       attr_faith: "信仰",
       attr_arcane: "神秘",
+
+      hp: "HP",
+      fp: "FP",
+      sp: "スタミナ",
 
       site_of_grace: "祝福",
     },

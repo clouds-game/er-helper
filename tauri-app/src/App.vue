@@ -2,7 +2,7 @@
 // This starter template is using Vue 3 <script setup> SFCs
 // Check out https://vuejs.org/api/sfc-script-setup.html#script-setup
 import { computed, onMounted, onUnmounted } from 'vue';
-import { Banner, PlayerCard, NumberInfo, NumberInfoBanner } from './components/Misc'
+import { Banner, PlayerCard, NumberInfo, NumberInfoBanner, HealthBar } from './components/Misc'
 import * as timeago from 'timeago.js';
 import { useState } from './lib/state';
 import { useI18n } from 'vue-i18n';
@@ -54,18 +54,34 @@ const basic_number = computed(() => ({
   death: state.basic_info.death,
 }))
 
-const add_points = computed(() => {
-  return {
-    vigor: 100,
-    mind: 100,
-    endurance: 100,
-    strength: 100,
-    dexterity: 100,
-    intelligence: 100,
-    faith: 100,
-    arcane: 100,
-  }
-})
+const add_points = computed(() => ({
+  vigor: state.basic_info.attrs[0],
+  mind: state.basic_info.attrs[1],
+  endurance: state.basic_info.attrs[2],
+  strength: state.basic_info.attrs[3],
+  dexterity: state.basic_info.attrs[4],
+  intelligence: state.basic_info.attrs[5],
+  faith: state.basic_info.attrs[6],
+  arcane: state.basic_info.attrs[7],
+}))
+
+const role_status = computed(() => ({
+  hp: {
+    current: state.basic_info.hp[0],
+    max: state.basic_info.hp[1],
+    base: state.basic_info.hp[2],
+  },
+  fp: {
+    current: state.basic_info.fp[0],
+    max: state.basic_info.fp[1],
+    base: state.basic_info.fp[2],
+  },
+  sp: {
+    current: state.basic_info.sp[0],
+    max: state.basic_info.sp[1],
+    base: state.basic_info.sp[2],
+  },
+}))
 
 </script>
 
@@ -84,6 +100,11 @@ const add_points = computed(() => {
     <NumberInfoBanner class="col-span-4" text_keypath="message.death_times" :value="basic_number.death" />
     <div class="m-1 col-span-2">
       <div>{{ t("ui.status") }}</div>
+      <table class="w-full">
+        <HealthBar :title="t('game.hp')" :status="role_status.hp" color="red" />
+        <HealthBar :title="t('game.fp')" :status="role_status.fp" color="blue" />
+        <HealthBar :title="t('game.sp')" :status="role_status.sp" color="green" />
+      </table>
     </div>
     <div class="m-1 col-span-2">
       <div>{{ t("game.memory_slots", 6) }}</div>

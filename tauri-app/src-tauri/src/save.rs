@@ -43,7 +43,13 @@ pub struct PlayerMetaInfo {
   pub death: u32,
   pub last_grace_id: u32,
   pub boss: u32,
-  pub graces: u32,
+  pub grace: u32,
+
+  /// in order `vigor, mind, endurance, strength, dexterity, intelligence, faith, arcane`
+  pub attrs: [u32; 8],
+  pub hp: [u32; 3],
+  pub fp: [u32; 3],
+  pub sp: [u32; 3],
 }
 
 macro_rules! check_eq {
@@ -61,6 +67,12 @@ pub struct Events {
   pub events: Vec<u8>,
   pub graces: HashMap<u32, bool>,
   pub bosses: HashMap<u32, bool>,
+}
+
+impl std::fmt::Debug for Events {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.debug_struct("Events").field("events", &self.events.len()).field("graces", &self.graces.len()).field("bosses", &self.bosses.len()).finish()
+  }
 }
 
 impl TryFrom<&UserDataX> for Events {
@@ -90,21 +102,28 @@ impl From<(&Profile, &UserDataX)> for PlayerMetaInfo {
     check_eq!(profile.runes_memory, userdata.player_game_data.runes_memory);
 
     let events = Events::try_from(userdata).unwrap();
-    let graces = events.graces.iter().filter(|(_, &v)| v).count() as u32;
+    let grace = events.graces.iter().filter(|(_, &v)| v).count() as u32;
     let boss = events.bosses.iter().filter(|(_, &v)| v).count() as u32;
+
+    let player = &userdata.player_game_data;
 
     Self {
       active: false,
       name: profile.character_name.clone(),
       level: profile.level,
       duration: profile.seconds_played,
-      runes: userdata.player_game_data.runes,
+      runes: player.runes,
       total_runes: profile.runes_memory,
       map_id: u32::from_le_bytes(profile.map_id),
       death: userdata.total_deaths_count,
       last_grace_id: userdata.last_rested_grace,
       boss,
-      graces,
+      grace,
+      attrs: [player.vigor, player.mind, player.endurance, player.strength, player.dexterity, player.intelligence, player.faith, player.arcane],
+      hp: [userdata.player_game_data.hp, userdata.player_game_data.max_hp, userdata.player_game_data.base_max_hp],
+      fp: [userdata.player_game_data.fp, userdata.player_game_data.max_fp, userdata.player_game_data.base_max_fp],
+      sp: [userdata.player_game_data.sp, userdata.player_game_data.max_sp, userdata.player_game_data.base_max_sp],
+
     }
   }
 }
@@ -136,8 +155,12 @@ impl MyState {
       level: player_info.level as _,
       rune: player_info.runes as _,
       boss: player_info.boss as _,
-      grace: player_info.graces as _,
+      grace: player_info.grace as _,
       death: player_info.death as _,
+      attrs: player_info.attrs,
+      hp: player_info.hp,
+      fp: player_info.fp,
+      sp: player_info.sp,
     })
   }
 }
