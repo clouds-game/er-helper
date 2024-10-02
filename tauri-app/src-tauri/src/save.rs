@@ -70,12 +70,12 @@ impl TryFrom<&UserDataX> for Events {
   fn try_from(userdata: &UserDataX) -> Result<Self> {
     let events = userdata.event_flags.clone();
     let mut graces = HashMap::new();
-    for i in GRACES.iter() {
+    for i in GRACES.data.iter() {
       let flag = events[i.offset as usize] & i.bit_mask != 0;
       graces.insert(i.id, flag);
     }
     let mut bosses = HashMap::new();
-    for i in BOSS.iter() {
+    for i in BOSS.data.iter() {
       let flag = events[i.offset as usize] & i.bit_mask != 0;
       bosses.insert(i.id, flag);
     }

@@ -1,14 +1,13 @@
-import { invoke } from "@tauri-apps/api/core";
-import { defineStore } from "pinia";
-import { ref, watch } from "vue";
+import { invoke } from "@tauri-apps/api/core"
+import { defineStore } from "pinia"
+import { ref, watch } from "vue"
+import { WeaponDB } from './db'
 
 export interface WeaponInfo {
-  weapon_id: number;
-  level: number;
-  name : string;
-  icon_id: number;
-  icon_data: string;
-  wep_type: number;
+  id: number
+  level: number
+  icon_id?: number
+  wep_type?: number
 }
 
 export const useState = defineStore("state", () => {
@@ -57,9 +56,20 @@ export const useState = defineStore("state", () => {
     }
   }
 
+  const update_weapon_info = (w: WeaponInfo) => {
+    const weapon = WeaponDB.get(w.id)
+    if (weapon) {
+      w.icon_id = weapon.icon_id
+      w.wep_type = weapon.type
+    }
+    return w
+  }
+
   const update_equipped_weapons = async () => {
     try {
       equipped_weapon_infos.value = await invoke("get_equipped_weapon_info")
+      equipped_weapon_infos.value.lefthand = equipped_weapon_infos.value.lefthand.map(update_weapon_info)
+      equipped_weapon_infos.value.righthand = equipped_weapon_infos.value.righthand.map(update_weapon_info)
     } catch (e) {
       console.error(e)
     }
