@@ -9,9 +9,10 @@ game_dir = config['unpack']['src_dir']
 stage1_dir = config['unpack']['stage1_dir']
 stage2_dir = Path(config['unpack']['stage2_dir'])
 
-ASSET_DIR = "tauri-app/src-tauri/assets"
+ASSET_DIR = "tauri-app/assets"
 paramdex_dir = Path("vendor/WitchyBND/WitchyBND/Assets/Paramdex/ER")
 langs = ['zhocn', 'jpnjp', 'engus']
+Path(ASSET_DIR).mkdir(parents=True, exist_ok=True)
 
 # %%
 class Message:
@@ -112,9 +113,9 @@ def gen_grace(stage_dir: PathLike, *, langs = langs):
   assert(df.shape[0] == BonfireWarpParam.shape[0])
   return df
 df_grace = gen_grace(stage2_dir)
-df_grace.write_csv(f"{ASSET_DIR}/graces.csv", quote_style='non_numeric')
+df_grace.write_csv(f"{ASSET_DIR}/grace.csv", quote_style='non_numeric')
 
-# %%
+# %% Generate boss.csv
 place_map = {
   'Liurnia Highway Far North': "Liurnia Highway North",
   'Liurnia - Meeting Place': "Temple Quarter",
@@ -163,6 +164,62 @@ npc_map = {
   'Nox Swordress & Nok Monk': 'Nox Monk', # note: "Nox Swordstress" misspelled
   # "Crucible Illusion"
 }
+def new_search(df_msg: pl.DataFrame, *, id_col = 'id', name_col = 'text_engus', query_fn = None, mapping = None):
+  df_msg = df_msg.with_columns(
+    normalized_name = pl.col(name_col).str.replace_all("'s ", '').str.replace_all('-', '').str.replace_all(',', '').str.replace_all(' ', '').str.to_lowercase()
+  )
+  def normalize(s: str):
+    return s.replace("'s ", '').replace('-', '').replace(',', '').replace(' ', '').lower()
+  def _search_normalized(name: str):
+    df1 = df_msg.filter(pl.col(name_col) == name)
+    if not df1.is_empty(): return df1
+    df1 = df_msg.filter(pl.col('normalized_name') == normalize(name))
+    return df1
+  def _search(name: str):
+    if query_fn is not None:
+      query_names = query_fn(name)
+    else:
+      query_names = query_mapping(name, mapping=mapping)
+    # print(query_names)
+    for name in query_names:
+      df1 = _search_normalized(name)
+      if not df1.is_empty():
+        return df1[0, id_col]
+  return _search
+
+def query_mapping(name: str, mapping: dict[str, str]) -> list[str]:
+  if name is None or name == '': return []
+  result = [name]
+  if mapping is not None and name in mapping:
+    result.append(mapping[name])
+    return result
+  return result
+
+def query_place_name(name: str, *, mapping = place_map) -> list[str]:
+  result = query_mapping(name, mapping)
+  if len(result) > 1: return result
+  if ' - ' in name:
+    name1, name2 = name.split(' - ', 1)
+    if name2 != "Minor Erdtree":
+      result.extend(query_place_name(name2, mapping=mapping))
+    result.extend(query_place_name(name1, mapping=mapping))
+  suffix = [' Entrance', ' Midway']
+  for s in suffix:
+    if name.endswith(s):
+      name2 = name.removesuffix(s)
+      result.extend(query_place_name(name2, mapping=mapping))
+  return result
+
+def query_npc_name(name: str, *, mapping = npc_map) -> list[str]:
+  result = query_mapping(name, mapping)
+  if len(result) > 1: return result
+  suffix = ['s', ' (Solo)', " (Duo)"]
+  for s in suffix:
+    if name.endswith(s):
+      name2 = name.removesuffix(s)
+      result.extend(query_place_name(name2, mapping=mapping))
+  return result
+
 def gen_boss(stage_dir: PathLike = stage2_dir):
   df = pl.read_csv(f"{stage_dir}/param/gameparam/GameAreaParam.csv")
   df_name = pl.DataFrame(read_paramdex_names("GameAreaParam")).rename(dict(id='id', name='row_name'))
@@ -176,62 +233,6 @@ def gen_boss(stage_dir: PathLike = stage2_dir):
     pos_z = 'bossPosZ',
   )
 
-  def new_search(df_msg: pl.DataFrame, *, id_col = 'id', name_col = 'text_engus', query_fn = None, mapping = None):
-    df_msg = df_msg.with_columns(
-      normalized_name = pl.col(name_col).str.replace_all("'s ", '').str.replace_all('-', '').str.replace_all(',', '').str.replace_all(' ', '').str.to_lowercase()
-    )
-    def normalize(s: str):
-      return s.replace("'s ", '').replace('-', '').replace(',', '').replace(' ', '').lower()
-    def _search_normalized(name: str):
-      df1 = df_msg.filter(pl.col(name_col) == name)
-      if not df1.is_empty(): return df1
-      df1 = df_msg.filter(pl.col('normalized_name') == normalize(name))
-      return df1
-    def _search(name: str):
-      if query_fn is not None:
-        query_names = query_fn(name)
-      else:
-        query_names = query_mapping(name, mapping=mapping)
-      # print(query_names)
-      for name in query_names:
-        df1 = _search_normalized(name)
-        if not df1.is_empty():
-          return df1[0, id_col]
-    return _search
-
-  def query_mapping(name: str, mapping: dict[str, str]) -> list[str]:
-    if name is None or name == '': return []
-    result = [name]
-    if mapping is not None and name in mapping:
-      result.append(mapping[name])
-      return result
-    return result
-
-  def query_place_name(name: str, *, mapping = place_map) -> list[str]:
-    result = query_mapping(name, mapping)
-    if len(result) > 1: return result
-    if ' - ' in name:
-      name1, name2 = name.split(' - ', 1)
-      if name2 != "Minor Erdtree":
-        result.extend(query_place_name(name2, mapping=mapping))
-      result.extend(query_place_name(name1, mapping=mapping))
-    suffix = [' Entrance', ' Midway']
-    for s in suffix:
-      if name.endswith(s):
-        name2 = name.removesuffix(s)
-        result.extend(query_place_name(name2, mapping=mapping))
-    return result
-
-  def query_npc_name(name: str, *, mapping = npc_map) -> list[str]:
-    result = query_mapping(name, mapping)
-    if len(result) > 1: return result
-    suffix = ['s', ' (Solo)', " (Duo)"]
-    for s in suffix:
-      if name.endswith(s):
-        name2 = name.removesuffix(s)
-        result.extend(query_place_name(name2, mapping=mapping))
-    return result
-
   df = (df
     .with_columns(__tmp_split = pl.col('row_name').str.strip_prefix('[').str.split_exact('] ', 1))
     .unnest('__tmp_split').rename(dict(field_0='map_name', field_1='npc_name'))
@@ -243,6 +244,9 @@ def gen_boss(stage_dir: PathLike = stage2_dir):
     )
     .join(msg_all['NpcName'], left_on='npc_text_id', right_on='id', how='left').rename(msg_rename_with_prefix('name'))
     .join(msg_all['PlaceName'].drop('tag', 'dlc'), left_on='map_text_id', right_on='id', how='left').rename(msg_rename_with_prefix('mapname'))
+    .with_columns(
+      name_engus = pl.coalesce(pl.col('name_engus'), pl.col('npc_name')),
+    )
   )
   dfr__game_area__unknown_map_name = df.filter((pl.col('map_name').is_not_null()) &(pl.col("map_name")!="")&(pl.col('map_text_id').is_null())).unique(['map_name', 'npc_name'])
   dfr__game_area__unknown_npc_name = df.filter((pl.col('npc_name').is_not_null()) &(pl.col("npc_name")!="")&(pl.col('npc_text_id').is_null())).unique('npc_name')
@@ -255,7 +259,7 @@ def gen_boss(stage_dir: PathLike = stage2_dir):
 df_boss = gen_boss(stage2_dir)
 df_boss.write_csv(f"{ASSET_DIR}/boss.csv", quote_style='non_numeric')
 
-# %%
+# %% Generate weapon.csv
 def pack_weapon_icons(src_dir: PathLike, dst_dir: PathLike, icon_ids: list[int], force = False, progress=True) -> list[str]:
   # from PIL import Image
   import imageio.v3 as imageio
@@ -266,7 +270,7 @@ def pack_weapon_icons(src_dir: PathLike, dst_dir: PathLike, icon_ids: list[int],
   files = {}
   for icon_id in icon_ids:
     icon_file = f"{src_dir}/MENU_Knowledge_{icon_id:05d}.dds"
-    target_file = f"{dst_dir}/icons_{icon_id:05d}.png"
+    target_file = f"{dst_dir}/icon_{icon_id:05d}.png"
     if not force and Path(target_file).exists():
       files[icon_id] = target_file
       if progress: bar.update()
@@ -276,10 +280,10 @@ def pack_weapon_icons(src_dir: PathLike, dst_dir: PathLike, icon_ids: list[int],
       imageio.imwrite(target_file, img)
       files[icon_id] = target_file
     except Exception as e:
-      logger.error(f"[ weapon_icon ] Change format failed {icon_file} -> {target_file} error : {e}")
+      logger.error(f"[weapon_icon] Change format failed {icon_file} -> {target_file} error : {e}")
       continue
     if progress: bar.update()
-    logger.info(f"[ weapon_icon ] Change format {icon_file} -> {target_file}")
+    logger.info(f"[weapon_icon] Change format {icon_file} -> {target_file}")
   return files
 
 def gen_weapon(stage_dir: PathLike, *, langs = langs, icon_path: PathLike = None):
@@ -296,8 +300,8 @@ def gen_weapon(stage_dir: PathLike, *, langs = langs, icon_path: PathLike = None
     df_files = pl.DataFrame(list(files.items()), schema={'icon_id': pl.Int64, 'path': pl.String}, orient='row')
     df = df.join(df_files, on='icon_id', how='left', )
   return df
-df_weapon = gen_weapon(stage2_dir, icon_path=f"{ASSET_DIR}/icons")
-df_weapon.with_columns(path = pl.col("path").str.strip_prefix(ASSET_DIR+"/")).write_csv(f"{ASSET_DIR}/weapons.csv", quote_style='non_numeric')
+df_weapon = gen_weapon(stage2_dir, icon_path=f"{ASSET_DIR}/icons").with_columns(path = pl.col("path").str.strip_prefix(ASSET_DIR+"/"))
+df_weapon.write_csv(f"{ASSET_DIR}/weapon.csv", quote_style='non_numeric')
 
 # %%
 def find_in_msg(d, lang = None):
