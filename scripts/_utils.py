@@ -52,7 +52,14 @@ def is_csharp_byte_array(obj):
     return False
 
 
-def get_format(byte_array: bytes):
+def get_format(byte_array: bytes, path: PathLike):
+  if path:
+    for suffix in ['fmg','layout', 'mtmsk', 'txt', 'hkx']:
+      if str(path).endswith(suffix):
+        return suffix.upper()
+  if not byte_array:
+    with open(path, "rb") as f:
+      byte_array = f.read(10)
   res = ""
   for b in byte_array:
     try:
