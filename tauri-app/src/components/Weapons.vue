@@ -3,6 +3,8 @@
 import { invoke } from '@tauri-apps/api/core';
 import { ref, watch } from 'vue';
 import { WeaponInfo } from '../lib/state';
+import { useI18n } from 'vue-i18n';
+import { WeaponDB } from '../lib/db';
 
 export interface Weapon {
   id: number
@@ -43,6 +45,9 @@ watch(() => props.weapons, async (new_weapons) => {
   await load_weapons(...weapons.value)
 })
 
+const { t } = useI18n({
+  messages: WeaponDB.i18n()
+})
 </script>
 
 
@@ -50,7 +55,7 @@ watch(() => props.weapons, async (new_weapons) => {
   <div class="grid grid-cols-3">
     <div v-for="weapon in weapons" :key="weapon.id" class="m-1 bg-gray-200">
       <img class="rounded-full w-full h-auto" :src="weapon.image" :alt="weapon.name" />
-      <h3>{{ weapon.name }}</h3>
+      <h3 class="text-center">{{ t(`db.weapon.name.${weapon.id}`) }}</h3>
     </div>
   </div>
 </template>

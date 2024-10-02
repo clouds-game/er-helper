@@ -5,7 +5,7 @@ import _BossSource from "../../assets/boss.out.json"
 
 export type Lang = 'engus' | 'jpnjp' | 'zhocn'
 export class Database<D extends IItem, T extends Text> {
-  constructor(public source: ISource<D, T>) {}
+  constructor(public name: string, public source: ISource<D, T>) {}
 
   get(id: number): D | undefined {
     return this.source.data.find((d) => d.id === id)
@@ -14,11 +14,19 @@ export class Database<D extends IItem, T extends Text> {
   getText(id: number, lang: Lang): string | null {
     return this.source.text[lang]?.name[id] ?? null
   }
+
+  i18n(): any {
+    return {
+      'cn': { 'db': { [this.name]: this.source.text.zhocn } },
+      'en': { 'db': { [this.name]: this.source.text.engus } },
+      'ja': { 'db': { [this.name]: this.source.text.jpnjp } },
+    }
+  }
 }
 
-export const WeaponDB: Database<WeaponInfo, Text> = new Database(_WeaponSource)
-export const GraceDB: Database<GraceInfo, TextWithMap> = new Database(_GraceSource)
-export const BossDB: Database<BossInfo, TextWithMap> = new Database(_BossSource as ISource<BossInfo, TextWithMap>)
+export const WeaponDB: Database<WeaponInfo, Text> = new Database("weapon", _WeaponSource)
+export const GraceDB: Database<GraceInfo, TextWithMap> = new Database("grace", _GraceSource)
+export const BossDB: Database<BossInfo, TextWithMap> = new Database("boss", _BossSource as ISource<BossInfo, TextWithMap>)
 
 export interface IItem {
   id: number
