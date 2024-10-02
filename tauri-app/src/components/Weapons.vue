@@ -45,6 +45,8 @@ watch(() => props.weapons, async (new_weapons) => {
   await load_weapons(...weapons.value)
 })
 
+const showTitle = ref(false)
+
 const { t } = useI18n({
   messages: WeaponDB.i18n()
 })
@@ -52,10 +54,12 @@ const { t } = useI18n({
 
 
 <template>
-  <div class="grid grid-cols-3">
-    <div v-for="weapon in weapons" :key="weapon.id" class="m-1 bg-gray-200">
-      <img class="rounded-full w-full h-auto" :src="weapon.image" :alt="weapon.name" />
-      <h3 class="text-center">{{ t(`db.weapon.name.${weapon.id}`) }}</h3>
+  <div>
+    <div class="grid grid-cols-6" @mouseover="showTitle = true" @mouseleave="showTitle=false">
+      <div v-for="weapon in weapons" :key="weapon.id" class="m-1 bg-gray-200">
+        <img class="rounded-full w-full h-auto" :src="weapon.image" :alt="weapon.name" />
+        <div class="text-xs text-center" v-if="showTitle">{{ t(`db.weapon.name.${weapon.id}`) }}</div>
+      </div>
     </div>
   </div>
 </template>

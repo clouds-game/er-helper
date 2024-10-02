@@ -69,9 +69,9 @@ export const NumberInfo = defineComponent<{
   value: number,
   title: string,
 }>((props) => {
-  return () => <div class="flex flex-col items-center bg-gray m-1 p-1">
-    <span class="text-2xl">{props.value}</span>
-    <span>{props.title}</span>
+  return () => <div class="flex flex-col items-center text-center bg-gray m-1 p-1">
+    <span class="text-2xl font-bold">{props.value}</span>
+    <span class="test-xs">{props.title}</span>
   </div>
 }, {
   name: "NumberInfo",
@@ -84,7 +84,7 @@ export const NumberInfoBanner = defineComponent<{
 }>((props) => {
   return () => <div class="text-center bg-gray m-1 p-3">
     <i18n-t keypath={props.text_keypath} plural={props.value}>
-      <span class="text-2xl text-red">{props.value}</span>
+      <span class="text-2xl font-bold text-red">{props.value}</span>
     </i18n-t>
   </div>
 }, {

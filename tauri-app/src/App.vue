@@ -17,6 +17,7 @@ onMounted(async () => {
   state.update_equipped_weapons()
   timer = setInterval(() => {
     state.update()
+    state.update_equipped_weapons()
   }, 3000)
   console.log(state.time.current)
   console.log(state.equipped_weapon_infos)
@@ -30,11 +31,25 @@ const timeago_locale = computed(() => {
   return {
     en: "en_US",
     cn: "zh_CN",
+    ja: "ja_JP",
   }[locale.value]
 })
 
 const latest_time_str = computed(() => {
   return timeago.format(state.time.latest, timeago_locale.value)
+})
+
+const add_points = computed(() => {
+  return {
+    vigor: 100,
+    mind: 100,
+    endurance: 100,
+    strength: 100,
+    dexterity: 100,
+    intelligence: 100,
+    faith: 100,
+    arcane: 100,
+  }
 })
 
 </script>
@@ -47,15 +62,30 @@ const latest_time_str = computed(() => {
     <div class="col-span-4">
       <PlayerCard :nickname="state.basic_names.nickname" :role_name="state.basic_names.role_name" :duration="state.basic_names.duration" :steam_id="state.basic_names.steam_id" />
     </div>
-    <NumberInfo :title="t('ui.level')" :value="state.basic_number.level" />
-    <NumberInfo :title="t('ui.runes')" :value="state.basic_number.rune" />
-    <NumberInfo :title="t('ui.boss')" :value="state.basic_number.boss" />
-    <NumberInfo :title="t('ui.graces')" :value="state.basic_number.grace" />
+    <NumberInfo :title="t('game.level')" :value="state.basic_number.level" />
+    <NumberInfo :title="t('ui.current_runes')" :value="state.basic_number.rune" />
+    <NumberInfo :title="t('ui.defeated_boss')" :value="state.basic_number.boss" />
+    <NumberInfo :title="t('ui.unlocked_graces')" :value="state.basic_number.grace" />
     <NumberInfoBanner class="col-span-4" text_keypath="message.death_times" :value="state.basic_number.death" />
-  </div>
-  <div class="m-1 grid grid-cols-2" >
-    <Weapons :weapons="state.equipped_weapon_infos.lefthand" />
-    <Weapons :weapons="state.equipped_weapon_infos.righthand" />
+    <div class="m-1 col-span-2">
+      <div>{{ t("ui.status") }}</div>
+    </div>
+    <div class="m-1 col-span-2">
+      <div>{{ t("game.memory_slots", 6) }}</div>
+    </div>
+    <div class="m-1 col-span-2">
+      <div>{{ t("ui.equips", 20) }}</div>
+      <Weapons :weapons="state.equipped_weapon_infos.righthand" />
+      <Weapons :weapons="state.equipped_weapon_infos.lefthand" />
+    </div>
+    <div class="m-1 col-span-2">
+      <div>{{ t("game.main_attribute") }}</div>
+      <div class="bg-gray-300 p-2 rounded shadow">
+        <div class="flex justify-between" v-for="attr in (['vigor', 'mind', 'endurance', 'strength', 'dexterity', 'intelligence', 'faith', 'arcane'] as const)">
+          <span>{{ t(`game.attr_${attr}`) }}:</span> <span>{{ add_points[attr] }}</span>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
