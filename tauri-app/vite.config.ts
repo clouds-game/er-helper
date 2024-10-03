@@ -3,13 +3,14 @@ import vue from "@vitejs/plugin-vue"
 import vueJsx from "@vitejs/plugin-vue-jsx"
 import vueDevTools from 'vite-plugin-vue-devtools'
 import UnoCSS from 'unocss/vite'
+import ViteYaml from '@modyfi/vite-plugin-yaml'
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST
 
 // https://vitejs.dev/config/
 export default defineConfig(async () => ({
-  plugins: [vue(), vueJsx(), vueDevTools(), UnoCSS()],
+  plugins: [vue(), vueJsx(), vueDevTools(), UnoCSS(), ViteYaml()],
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //

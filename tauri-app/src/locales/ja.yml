@@ -1,0 +1,42 @@
+ui:
+  loading: "読み込み中..."
+  current_runes: "ルーン"
+  defeated_boss: "討伐ボス数"
+  unlocked_graces: "祝福"
+
+  status: "役職状態"
+  equips: "装備"
+
+  steam_id: "Steam ID"
+  role_name: "役職"
+  duration: "ゲーム時間"
+  swtich: "役職を切り替える"
+
+game:
+  # https://eldenring-jp.wiki.fextralife.com/%E3%82%B9%E3%83%86%E3%83%BC%E3%82%BF%E3%82%B9
+  status: "ステータス"
+  level: "レベル"
+  level_up: "レベルアップ"
+  runes: "ルーン"
+
+  memory_slots: "記憶スロット"
+
+  main_attribute: "能力値"
+  attr_vigor: "生命力"
+  attr_mind: "精神力"
+  attr_endurance: "持久力"
+  attr_strength: "筋力"
+  attr_dexterity: "技量"
+  attr_intelligence: "知力"
+  attr_faith: "信仰"
+  attr_arcane: "神秘"
+
+  hp: "HP"
+  fp: "FP"
+  sp: "スタミナ"
+
+  site_of_grace: "祝福"
+
+message:
+  death_times: "あなたは {0} 回死にました"
+  update_at: "最終更新日： {0}"

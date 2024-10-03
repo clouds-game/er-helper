@@ -5,5 +5,9 @@
   ],
   "jupyter.notebookFileRoot": "${workspaceFolder}",
   "python.envFile": "${workspaceFolder}/python.env",
-  "cmake.sourceDirectory": "${workspaceFolder}/vendor/oodle-wrapper"
+  "cmake.sourceDirectory": "${workspaceFolder}/vendor/oodle-wrapper",
+  "i18n-ally.enabledFrameworks": ["vue"],
+  "i18n-ally.localesPaths": ["tauri-app/src/locales"],
+  "i18n-ally.sourceLanguage": "en",
+  "i18n-ally.readonly": true,
 }

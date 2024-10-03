@@ -1,27 +1,6 @@
 import { defineComponent } from "vue"
 import { useI18n } from "vue-i18n"
 
-const i18n = {
-  en: {
-    steam_id: "Steam ID",
-    role_name: "Role Name",
-    duration: "Duration",
-    swtich: "Switch Role",
-  },
-  cn: {
-    steam_id: "Steam ID",
-    role_name: "当前角色",
-    duration: "游戏时长",
-    swtich: "切换角色",
-  },
-  ja: {
-    steam_id: "Steam ID",
-    role_name: "役職",
-    duration: "ゲーム時間",
-    swtich: "役職を切り替える",
-  },
-}
-
 export const Banner = defineComponent<{
   content?: string,
   level: "warn" | "info" | "error",
@@ -46,17 +25,17 @@ export const PlayerCard = defineComponent<{
   duration: number,
   steam_id: string,
 }>((props) => {
-  const { t: $t, locale } = useI18n({ messages: i18n })
+  const { t: $t, locale } = useI18n()
   return () => <div class="flex">
     <div>
       <img src="https://via.placeholder.com/80" alt="player avatar" class="rounded-full" />
     </div>
     <div class="flex flex-col justify-around flex-auto ml-2">
-      <div class="flex justify-between"><span class="text-2xl">{props.nickname}</span> <span class="text-sm">{ $t('steam_id') }: {props.steam_id}</span></div>
-      <div class="flex justify-between"><span>{ $t('role_name') }: {props.role_name}</span></div>
+      <div class="flex justify-between"><span class="text-2xl">{props.nickname}</span> <span class="text-sm">{ $t('ui.steam_id') }: {props.steam_id}</span></div>
+      <div class="flex justify-between"><span>{ $t('ui.role_name') }: {props.role_name}</span></div>
       <div class="flex justify-between">
-        <span>{ $t('duration') }: {(props.duration / 3600).toFixed(1)}h</span>
-        <span><button>{ $t('swtich') }</button><ButtonLanguage class="ml-1" current={locale.value} /></span>
+        <span>{ $t('ui.duration') }: {(props.duration / 3600).toFixed(1)}h</span>
+        <span><button>{ $t('ui.swtich') }</button><ButtonLanguage class="ml-1" current={locale.value as any} /></span>
       </div>
     </div>
   </div>
