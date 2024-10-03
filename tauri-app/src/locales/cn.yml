@@ -27,6 +27,9 @@ game:
   hp: "血量"
   fp: "专注值"
   sp: "精力"
+  crafting_material: "制作材料"
+  remembrance: "追忆"
+  sorcery: "魔法"
   site_of_grace: "赐福"
 message:
   death_times: "你一共死亡 {0} 次"

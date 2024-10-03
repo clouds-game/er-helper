@@ -260,13 +260,14 @@ df_boss = gen_boss(stage2_dir)
 df_boss.write_csv(f"{ASSET_DIR}/boss.csv", quote_style='non_numeric')
 
 # %% Generate weapon.csv
-def pack_weapon_icons(src_dir: PathLike, dst_dir: PathLike, icon_ids: list[int], force = False, progress=True) -> list[str]:
+def write_icons(icon_ids: list[int], src_dir: PathLike, dst_dir: PathLike, force = False, progress=True) -> pl.DataFrame:
   # from PIL import Image
   import imageio.v3 as imageio
 
+  Path(dst_dir).mkdir(parents=True, exist_ok=True)
   if progress:
     import tqdm
-    bar = tqdm.tqdm(total=len(icon_ids), desc="weapon icons")
+    bar = tqdm.tqdm(total=len(icon_ids), desc="write icons")
   files = {}
   for icon_id in icon_ids:
     icon_file = f"{src_dir}/MENU_Knowledge_{icon_id:05d}.dds"
@@ -280,11 +281,11 @@ def pack_weapon_icons(src_dir: PathLike, dst_dir: PathLike, icon_ids: list[int],
       imageio.imwrite(target_file, img)
       files[icon_id] = target_file
     except Exception as e:
-      logger.error(f"[weapon_icon] Change format failed {icon_file} -> {target_file} error : {e}")
+      logger.error(f"[write_icon] Change format failed {icon_file} -> {target_file} error : {e}")
       continue
     if progress: bar.update()
-    logger.info(f"[weapon_icon] Change format {icon_file} -> {target_file}")
-  return files
+    logger.info(f"[write_icon] Change format {icon_file} -> {target_file}")
+  return pl.DataFrame(list(files.items()), schema={'icon_id': pl.Int64, 'path': pl.String}, orient='row')
 
 def gen_weapon(stage_dir: PathLike, *, langs = langs, icon_path: PathLike = None):
   df_msg = load_mesaages(['WeaponName'], stage_dir=stage_dir)
@@ -294,14 +295,26 @@ def gen_weapon(stage_dir: PathLike, *, langs = langs, icon_path: PathLike = None
   df = EquipParamWeapon.join(
     df_msg.df, on='id', how='left').rename(msg_rename_with_prefix('name', langs))
   if icon_path is not None:
-    icon_ids = df['icon_id'].unique().to_list()
-    Path(icon_path).mkdir(parents=True, exist_ok=True)
-    files = pack_weapon_icons(f"{stage_dir}/menu/hi/00_solo", icon_path, icon_ids)
-    df_files = pl.DataFrame(list(files.items()), schema={'icon_id': pl.Int64, 'path': pl.String}, orient='row')
-    df = df.join(df_files, on='icon_id', how='left', )
+    df_files = write_icons(df['icon_id'].unique().to_list(), src_dir = f"{stage_dir}/menu/hi/00_solo", dst_dir = icon_path)
+    df = df.join(df_files, on='icon_id', how='left')
   return df
 df_weapon = gen_weapon(stage2_dir, icon_path=f"{ASSET_DIR}/icons").with_columns(path = pl.col("path").str.strip_prefix(ASSET_DIR+"/"))
 df_weapon.write_csv(f"{ASSET_DIR}/weapon.csv", quote_style='non_numeric')
+
+# %%
+def gen_goods(stage_dir: PathLike, *, langs = langs, icon_path: PathLike = None):
+  df_msg = load_mesaages(['GoodsName'], stage_dir=stage_dir)
+  EquipParamGoods = pl.read_csv(f"{stage_dir}/param/gameparam/EquipParamGoods.csv").select(
+    id = 'id', icon_id='iconId', type='goodsType',
+  )
+  df = EquipParamGoods.join(
+    df_msg.df, on='id', how='left').rename(msg_rename_with_prefix('name', langs))
+  if icon_path is not None:
+    df_files = write_icons(df['icon_id'].unique().to_list(), src_dir = f"{stage_dir}/menu/hi/00_solo", dst_dir = icon_path)
+    df = df.join(df_files, on='icon_id', how='left')
+  return df
+df_goods = gen_goods(stage2_dir, icon_path=f"{ASSET_DIR}/icons").with_columns(path = pl.col("path").str.strip_prefix(ASSET_DIR+"/"))
+df_goods.write_csv(f"{ASSET_DIR}/goods.csv", quote_style='non_numeric')
 
 # %%
 def find_in_msg(d, lang = None):

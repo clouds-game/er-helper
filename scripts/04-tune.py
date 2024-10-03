@@ -1,8 +1,6 @@
 # %%
 from _common import *
 
-# enter_project_root()
-
 ASSET_DIR = "tauri-app/assets"
 
 df_bits = pl.read_csv(f"{ASSET_DIR}/eventflag_bst.csv")
@@ -106,6 +104,64 @@ df = df.select(
   (pl.col('name').struct.field('engus') != 'DLC dummy') &
   (pl.col('name').struct.field('engus') != '[ERROR]')
 )
+names = {lang: dict(zip(df['id'], v)) for lang, v in df['name'].struct.unnest().to_dict().items()}
+result = {
+  "count": df.height,
+  "data": list(df.select('id', 'icon_id', 'type', 'path').rows(named=True)),
+  "text": {
+    lang: dict(name=names[lang]) for lang in names.keys()
+  },
+}
+print(asset_name, df.height, df.unique('id').height)
+with open(f"{ASSET_DIR}/{asset_name}.out.json", "w") as f:
+  json.dump(result, f, ensure_ascii=False, separators=(',', ':'))
+
+# %%
+"""
+<Enum Name="GOODS_TYPE" type="u8">
+  <Option Value="0" Name="Normal Item" />
+  <Option Value="1" Name="Key Item" />
+  <Option Value="2" Name="Crafting Material" />
+  <Option Value="3" Name="Remembrance" />
+  <Option Value="4" Name="None" />
+  <Option Value="5" Name="Sorcery" />
+  <Option Value="6" Name="None" />
+  <Option Value="7" Name="Spirit Summon - Lesser" />
+  <Option Value="8" Name="Spirit Summon - Greater" />
+  <Option Value="9" Name="Wondrous Physick" />
+  <Option Value="10" Name="Wondrous Physick Tear" />
+  <Option Value="11" Name="Regenerative Material" />
+  <Option Value="12" Name="Info Item" />
+  <Option Value="13" Name="None" />
+  <Option Value="14" Name="Reinforcement Material" />
+  <Option Value="15" Name="Great Rune" />
+  <Option Value="16" Name="Incantation" />
+  <Option Value="17" Name="Self Buff - Sorcery" />
+  <Option Value="18" Name="Self Buff - Incantation" />
+</Enum>
+"""
+df_goods_type = pl.DataFrame({
+  "type_name": [
+    "Normal", "KeyItem", "Crafting", "Remembrance", "None4",
+    "Sorcery", "None6", "Spirit", "NamedSpirit",
+    "Wondrous", "Tear", "Container",
+    "Info", "None13", "Reinforcement", "GreatRune",
+    "Incantation", "SorceryBuff", "IncantationBuff",
+  ],
+}).with_row_index().with_columns(index = pl.col('index').cast(pl.Int64))
+
+asset_name = "goods"
+df = pl.read_csv(f"{ASSET_DIR}/{asset_name}.csv")
+df = df.select(
+  'id', 'icon_id', 'type', 'path',
+  name = pl.struct(pl.col("^name_.*$").name.map(lambda x: x.removeprefix("name_"))),
+).filter(
+  pl.col('name').struct.field('engus').is_not_null() &
+  (pl.col('name').struct.field('engus') != 'DLC dummy') &
+  (pl.col('name').struct.field('engus') != '[ERROR]')
+).join(df_goods_type, left_on='type', right_on='index').with_columns(
+  type = pl.coalesce(pl.col('type_name'), pl.col('type').cast(pl.String))
+).drop('type_name')
 names = {lang: dict(zip(df['id'], v)) for lang, v in df['name'].struct.unnest().to_dict().items()}
 result = {
   "count": df.height,

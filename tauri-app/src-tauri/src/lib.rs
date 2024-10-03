@@ -45,9 +45,9 @@ async fn get_basic_info(state: tauri::State<'_, Arc<MyState>>, selected: Option<
 }
 
 #[tauri::command(rename_all = "snake_case")]
-async fn get_equipped_weapon_info(state: tauri::State<'_, Arc<MyState>>) -> Result<crate::equips::WeaponInfos, String> {
+async fn get_equipped_info(state: tauri::State<'_, Arc<MyState>>) -> Result<crate::equips::EquippedInfos, String> {
   let selected = state.get_selected();
-  state.get_equipped_weapon_info(selected).map_err(|e| format!("state.get_equipped_weapon_info: {}", e))
+  state.get_equipped_info(selected).map_err(|e| format!("state.get_equipped_weapon_info: {}", e))
 }
 
 #[tauri::command(rename_all = "snake_case")]
@@ -88,7 +88,7 @@ pub fn run<P: AsRef<Path>>(path: P) {
     .invoke_handler(tauri::generate_handler![
       get_metadata,
       get_basic_info,
-      get_equipped_weapon_info,
+      get_equipped_info,
       get_icons,
     ])
     .run(tauri::generate_context!())

@@ -1,6 +1,7 @@
 import _WeaponSource from "../../assets/weapon.out.json"
 import _GraceSource from "../../assets/grace.out.json"
 import _BossSource from "../../assets/boss.out.json"
+import _GoodsSource from "../../assets/goods.out.json"
 
 
 export type Lang = 'engus' | 'jpnjp' | 'zhocn'
@@ -27,6 +28,7 @@ export class Database<D extends IItem, T extends Text> {
 export const WeaponDB: Database<WeaponInfo, Text> = new Database("weapon", _WeaponSource)
 export const GraceDB: Database<GraceInfo, TextWithMap> = new Database("grace", _GraceSource)
 export const BossDB: Database<BossInfo, TextWithMap> = new Database("boss", _BossSource as ISource<BossInfo, TextWithMap>)
+export const GoodsDB: Database<GoodsInfo, Text> = new Database("goods", _GoodsSource as ISource<GoodsInfo, Text>)
 
 export interface IItem {
   id: number
@@ -41,6 +43,7 @@ export interface ISource<D, T> {
 export interface IWeaponDB extends ISource<WeaponInfo, Text> {}
 export interface IGraceDB extends ISource<GraceInfo, TextWithMap> {}
 export interface IBossDB extends ISource<BossInfo, TextWithMap> {}
+export interface IGoodsDB extends ISource<GoodsInfo, Text> {}
 
 // {"id":110000,"icon_id":0,"type":33,"path":"icons/icon_00000.png"}
 export interface WeaponInfo {
@@ -68,6 +71,19 @@ export interface BossInfo {
   block: number
   offset: number
   bit_mask: number
+}
+
+// {"id":101,"icon_id":2,"type":0,"path":"icons/icon_00002.png"}
+export type GoodsType = "Normal" | "KeyItem" | "Crafting" | "Remembrance" | "None4" |
+  "Sorcery" | "None6" | "Spirit" | "NamedSpirit" |
+  "Wondrous" | "Tear" | "Container" |
+  "Info" | "None13" | "Reinforcement" | "GreatRune" |
+  "Incantation" | "SorceryBuff" | "IncantationBuff"
+export interface GoodsInfo {
+  id: number
+  icon_id: number
+  type: GoodsType
+  path: string
 }
 
 export interface Text {

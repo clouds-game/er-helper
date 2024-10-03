@@ -1,13 +1,17 @@
 import { invoke } from "@tauri-apps/api/core"
 import { defineStore } from "pinia"
 import { ref, watch } from "vue"
-import { WeaponDB } from './db'
+import { GoodsDB, WeaponDB } from './db'
 
 export interface WeaponInfo {
   id: number
   level: number
   icon_id?: number
   wep_type?: number
+}
+export interface MagicInfo {
+  id: number
+  icon_id?: number
 }
 
 const array_new = (length: number) => Array.from({ length }, () => 0)
@@ -34,11 +38,12 @@ export const useState = defineStore("state", () => {
     fp: array_new(3),
     sp: array_new(3),
   })
-  const equipped_weapon_infos = ref({
+  const equipped_info = ref({
     lefthand: [] as WeaponInfo[],
     righthand: [] as WeaponInfo[],
     arrows: [] as WeaponInfo[],
     bolts: [] as WeaponInfo[],
+    magics: [] as MagicInfo[],
   })
   const time = ref({
     queried: new Date(0),
@@ -68,14 +73,22 @@ export const useState = defineStore("state", () => {
     }
     return w
   }
+  const update_goods_info = (g: MagicInfo) => {
+    const goods = GoodsDB.get(g.id)
+    if (goods) {
+      g.icon_id = goods.icon_id
+    }
+    return g
+  }
 
-  const update_equipped_weapons = async () => {
+  const update_equipped_items = async () => {
     try {
-      equipped_weapon_infos.value = await invoke("get_equipped_weapon_info")
-      equipped_weapon_infos.value.lefthand = equipped_weapon_infos.value.lefthand.map(update_weapon_info)
-      equipped_weapon_infos.value.righthand = equipped_weapon_infos.value.righthand.map(update_weapon_info)
-      equipped_weapon_infos.value.arrows = equipped_weapon_infos.value.arrows.map(update_weapon_info)
-      equipped_weapon_infos.value.bolts = equipped_weapon_infos.value.bolts.map(update_weapon_info)
+      equipped_info.value = await invoke("get_equipped_info")
+      equipped_info.value.lefthand = equipped_info.value.lefthand.map(update_weapon_info)
+      equipped_info.value.righthand = equipped_info.value.righthand.map(update_weapon_info)
+      equipped_info.value.arrows = equipped_info.value.arrows.map(update_weapon_info)
+      equipped_info.value.bolts = equipped_info.value.bolts.map(update_weapon_info)
+      equipped_info.value.magics = equipped_info.value.magics.map(update_goods_info)
     } catch (e) {
       console.error(e)
     }
@@ -94,10 +107,10 @@ export const useState = defineStore("state", () => {
   return {
     metadata,
     basic_info,
-    equipped_weapon_infos,
+    equipped_info,
     time,
     nickname,
     update,
-    update_equipped_weapons
+    update_equipped_items,
   }
 })
