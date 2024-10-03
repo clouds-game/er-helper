@@ -51,29 +51,6 @@ def is_csharp_byte_array(obj):
   except:
     return False
 
-
-def get_format(byte_array: bytes, path: PathLike):
-  if path:
-    for suffix in ['fmg','layout', 'mtmsk', 'txt', 'hkx']:
-      if str(path).endswith(suffix):
-        return suffix.upper()
-  if not byte_array:
-    with open(path, "rb") as f:
-      byte_array = f.read(10)
-  res = ""
-  for b in byte_array:
-    try:
-      c = chr(b)
-      if c.isprintable():
-        res += c
-      else:
-        break
-    except:
-      print(f"Failed to convert byte {b} to char")
-      break
-  return res.strip()
-
-
 def get_def_name(name: str, exist_names: list[str]):
   if name in exist_names:
     return name
@@ -84,3 +61,10 @@ def get_def_name(name: str, exist_names: list[str]):
   if name.rsplit("_", 1)[0] in exist_names:
     return name.rsplit("_", 1)[0]
   return NameMaps.get(name, name)
+
+def hash_path(path: PathLike, prefix: str = None) -> str:
+  import hashlib
+  data = Path(path).as_posix().lower().encode('utf-8')
+  if prefix is not None:
+    data = prefix.encode('utf-8') + b'::' + data
+  return hashlib.sha256(data).hexdigest()

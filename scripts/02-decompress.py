@@ -16,6 +16,50 @@ game_dir = config['unpack']['src_dir']
 stage1_dir = config['unpack']['stage1_dir']
 stage2_dir = config['unpack']['stage2_dir']
 
+from typing import TypeVar
+FormatClass = TypeVar('T')
+@dataclass
+class File:
+  path: str # relative path
+  data: bytes | None = None
+  fmt_from_data: str | None = None
+  fmt_from_path: str | None = None
+  fmt_executing: str | None = None
+  parent_hash: str | None = None
+
+  @property
+  def hash(self):
+    return _utils.hash_path(self.path, self.parent_hash)
+
+  def format(self, stage_dir: PathLike = None):
+    if self.fmt_executing:
+      return self.fmt_executing
+    if self.fmt_from_data is None:
+      if stage_dir is None:
+        fmt1, fmt2 = get_format(self.data or b"", self.path)
+      else:
+        fmt1, fmt2 = get_format(self.data, Path(stage_dir).joinpath(self.path))
+      self.fmt_from_data = fmt1
+      self.fmt_from_path = fmt2
+    if self.fmt_from_data:
+      return self.fmt_from_data
+    return self.fmt_from_path
+
+  def get_data(self, stage_dir: PathLike = None) -> bytes:
+    if self.data is None and stage_dir is not None:
+      path = Path(stage_dir).joinpath(self.path)
+      self.data = bytes_to_clr(None, path=path)
+    return self.data
+
+  def open_as(self, fmt: type[FormatClass], fmt_str: str, stage_dir: PathLike = None, helper = False) -> FormatClass:
+    data = self.get_data(stage_dir)
+    if helper:
+      result = UnpackHelper.Format[fmt].OpenInMemory(data)
+    else:
+      result = fmt(data)
+    self.fmt_executing = fmt_str
+    return result
+
 # %%
 def cell_value(cell: WitchyFormats.PARAM.Cell):
   if cell is None:
@@ -73,41 +117,36 @@ for file in param_src_dir.glob('*.param'):
   unpack_param(file, param_dst_dir)
 
 # %%
-from typing import TypedDict, Unpack
-class Unpackargs(TypedDict):
-  just_trace: bool
-  save_dcx_res: bool
+# def add_rows_to_df(df: pl.DataFrame, rows: list[tuple[PathLike, PathLike, str|None]]):
+#   data = []
+#   for row in rows:
+#     src = get_relative_path(Path(row[0]), [stage1_dir, stage2_dir])
+#     dst = get_relative_path(Path(row[1]), [stage2_dir])
+#     data.append([src.as_posix(), hash_path(src), dst.as_posix(), hash_path(dst), row[2]])
+#   df_t = pl.DataFrame(data, schema=["src", "src_hash", "dst", 'dst_hash', 'extra'], orient='row')
+#   df.vstack(df_t, in_place=True)
 
-def hash_path(path: PathLike) -> str:
-  import hashlib
-  data = Path(path).as_posix().encode('utf-8')
-  return hashlib.sha256(data).hexdigest()
+# def add_row_to_df(df: pl.DataFrame, src: PathLike, dst: PathLike, extra: str|None = None):
+#   add_rows_to_df(df, [(src, dst, extra)])
 
-def create_new_df() -> pl.DataFrame:
-  df = pl.DataFrame(schema={"src": pl.String, "src_hash": pl.String, "dst": pl.String, "dst_hash": pl.String, "extra": pl.String})
-  return df
+@dataclass
+class Metadata:
+  path: PathLike
+  extra: str
+  size: int | None = None
+  fmt_from_bytes: str | None = None
 
-def get_relative_path(path: PathLike, bases: list[PathLike]) -> Path:
-  for base in bases:
-    if Path(path).is_relative_to(base):
-      return Path(path).relative_to(base)
-  return Path(path)
+def normalize_path(path: PathLike):
+  return Path(path).as_posix().lower()
 
-def add_rows_to_df(df: pl.DataFrame, rows: list[tuple[PathLike, PathLike, str|None]]):
-  data = []
-  for row in rows:
-    src = get_relative_path(Path(row[0]), [stage1_dir, stage2_dir])
-    dst = get_relative_path(Path(row[1]), [stage2_dir])
-    data.append([src.as_posix(), hash_path(src), dst.as_posix(), hash_path(dst), row[2]])
-  df_t = pl.DataFrame(data, schema=["src", "src_hash", "dst", 'dst_hash', 'extra'], orient='row')
-  df.vstack(df_t, in_place=True)
-
-def add_row_to_df(df: pl.DataFrame, src: PathLike, dst: PathLike, extra: str|None = None):
-  add_rows_to_df(df, [(src, dst, extra)])
-
-def create_df(src: PathLike, dst: PathLike, extra: str|None = None) -> pl.DataFrame:
-  df = create_new_df()
-  add_row_to_df(df, src, dst, extra)
+def create_df(src: File, dst: list[Metadata]) -> pl.DataFrame:
+  df = pl.DataFrame(
+    [
+      (normalize_path(src.path), src.hash, normalize_path(meta.path), _utils.hash_path(meta.path, src.hash), meta.extra, meta.size, src.format(), meta.fmt_from_bytes)
+      for meta in dst
+    ],
+    schema={"src_path": pl.String, "src_hash": pl.String, "dst_path": pl.String, "dst_hash": pl.String, "original_path": pl.String, "size": pl.Int64, "method": pl.String, "fmt": pl.String},
+    orient='row')
   return df
 
 def bytes_to_clr(data: bytes | System.Array[System.Byte], *, path: PathLike | None = None):
@@ -117,136 +156,223 @@ def bytes_to_clr(data: bytes | System.Array[System.Byte], *, path: PathLike | No
     return None
   return System.Array[System.Byte](data)
 
-def unpack_fmg(path: PathLike, dst_dir: PathLike, data=None, **kwargs: Unpack[Unpackargs]) -> pl.DataFrame:
+@dataclass
+class UnpackConfig:
+  stage1_dir: Path
+  stage2_dir: Path | None
+  force: bool
+
+  @property
+  def just_trace(self):
+    return self.stage2_dir is None
+
+
+# %%
+def unpack_fmg(file: File, config: UnpackConfig) -> pl.DataFrame:
+  """
+  fmg usually be a message file that decoded to .json
+  """
   # print(f"Unpack FMG {path}")
-  logger.info(f"Unpack FMG {path}")
-  path, dst_dir = Path(path), Path(dst_dir)
-  data = bytes_to_clr(data, path=path)
-  fmg: SoulsFormats.FMG = UnpackHelper.Format[SoulsFormats.FMG].OpenInMemory(data)
+  logger.info(f"Unpack FMG {file.path} from {file.parent_hash}")
+  fmg = file.open_as(SoulsFormats.FMG, "FMG", stage_dir=config.stage1_dir, helper=True)
   entries = [{"id":entry.ID,"text": entry.Text} for entry in fmg.Entries]
-  target_path = dst_dir.joinpath(f"{path.stem}.json")
-  target_path.parent.mkdir(parents=True, exist_ok=True)
-  with open(target_path, "w", encoding='utf-8') as f:
-    json.dump(entries, f, indent=2, ensure_ascii=False)
-  logger.info(f"[FMG] Unpack {path} to {target_path}")
-  df = create_df(path, target_path)
-  return df
+  dst_path = Path(file.path).with_suffix(".json")
+  if not config.just_trace:
+    target_path = config.stage2_dir.joinpath(dst_path)
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(target_path, "w", encoding='utf-8') as f:
+      # TODO: jsonline like writer
+      json.dump(entries, f, indent=2, ensure_ascii=False)
+    logger.info(f"[FMG] Unpack {path} to {target_path}")
+  return create_df(file, [Metadata(dst_path, "", fmt_from_bytes="JSON")])
 
 
-def unpack_tpf(path: PathLike, dst_dir: PathLike, data=None, **kwargs: Unpack[Unpackargs]) -> pl.DataFrame:
+def unpack_tpf(file: File, config: UnpackConfig) -> pl.DataFrame:
+  """
+  tpf is a texture package file, usually contains dds files
+  """
   # print(f"Unpack TPF {path}")
-  logger.info(f"Unpack TPF {path}")
-  path, dst_dir = Path(path), Path(dst_dir)
-  # dst_dir = dst_dir.joinpath(path.stem.replace('.', '-'))
-  data = bytes_to_clr(data, path=path)
-  tpf: SoulsFormats.TPF = UnpackHelper.Format[SoulsFormats.TPF].OpenInMemory(data)
-  dst_dir.mkdir(parents=True, exist_ok=True)
-  df = create_new_df()
-  df_data = []
+  logger.info(f"Unpack TPF {file.path} from {file.parent_hash}")
+  tpf = file.open_as(SoulsFormats.TPF, "TPF", stage_dir=config.stage1_dir, helper=True)
+  dst_dir = Path(file.path).parent
+  if not config.just_trace:
+    target_dir = config.stage2_dir.joinpath(dst_dir)
+    target_dir.mkdir(parents=True, exist_ok=True)
+  meta = []
   for texture in tpf.Textures:
-    target_path = dst_dir.joinpath(f"{texture.Name}.dds")
-    df_data.append([str(path), str(target_path), texture.Name])
-    if kwargs.get("just_trace", True):
-      continue
-    System.IO.File.WriteAllBytes(str(target_path), texture.Headerize())
-  add_rows_to_df(df, df_data)
-  return df
+    meta.append(Metadata(dst_dir.joinpath(f"{texture.Name}.dds"), str(texture.Name), fmt_from_bytes="DDS"))
+    if not config.just_trace:
+      target_path = target_dir.joinpath(f"{texture.Name}.dds")
+      System.IO.File.WriteAllBytes(str(target_path), texture.Headerize())
+  return create_df(file, meta)
 
-def unpack_binder(binder: SoulsFormats.BinderReader, dst_dir: PathLike, path: PathLike, **kwargs: Unpack[Unpackargs]) -> pl.DataFrame:
-  dst_dir, path = Path(dst_dir), Path(path)
+def unpack_binder(binder: SoulsFormats.BinderReader, src_file: File, config: UnpackConfig) -> pl.DataFrame:
+  """
+  binder is a inner format that contains multiple files
+  """
   # dst_dir = dst_dir.joinpath(path.stem.replace('.', '-'))
-  df = create_new_df()
+  meta = []
+  dfs = []
   for file in binder.Files:
     data = binder.ReadFile(file)
     # target_path = dst_dir.joinpath(f"{str(file.Name).split('\\')[-1]}")
-    (sub_path, root) = _utils.UnrootBNDPath(file.Name)
-    if root:
-      target_path = Path(stage2_dir).joinpath(sub_path)
-    else:
-      target_path = dst_dir.joinpath(sub_path)
+    (dst_path, root) = _utils.UnrootBNDPath(file.Name)
+    if root is None:
+      dst_path = Path(src_file.path).parent.joinpath(dst_path)
     if data is None:
       logger.error(f"[{path.name}] Failed to read {file.Name}")
       continue
-    add_row_to_df(df, path, target_path, extra=str(file.Name))
-    df_child = unpack(target_path, target_path.parent, data, **kwargs)
+    # print("--------")
+    # print(path)
+    # print(target_path)
+    # print(len(data))
+    inner_file = File(dst_path, data, parent_hash=src_file.hash)
+    meta.append(Metadata(dst_path, file.Name, data.Length, fmt_from_bytes=inner_file.format()))
+    df_child = unpack(inner_file, config)
     if df_child is not None:
-      df.vstack(df_child, in_place=True)
+      dfs.append(df)
       continue
-    if kwargs.get("just_trace", True):
-      continue
-    Path(target_path).parent.mkdir(parents=True, exist_ok=True)
-    System.IO.File.WriteAllBytes(str(target_path), data)
+    if not config.just_trace:
+      target_path = Path(config.stage2_dir).joinpath(dst_path)
+      target_path.parent.mkdir(parents=True, exist_ok=True)
+      System.IO.File.WriteAllBytes(str(target_path), data)
+  # TODO: file
+  df = create_df(src_file, meta)
+  df = pl.concat([df, *dfs])
   return df
 
 
-def unpack_bnd4(path: PathLike, dst_dir: PathLike, data=None, **kwargs: Unpack[Unpackargs]) -> pl.DataFrame:
-  path, dst_dir = Path(path), Path(dst_dir)
-  # print(f"Unpack BND4 {path}")
-  logger.info(f"Unpack BND4 {path}")
-  data = bytes_to_clr(data, path=path)
-  bnd = SoulsFormats.BND4Reader(data)
-  df = unpack_binder(bnd, dst_dir, path, **kwargs)
+def unpack_bnd4(file: File, config: UnpackConfig) -> pl.DataFrame:
+  """
+  bnd4 is a binder file that contains multiple files
+  """
+  logger.info(f"Unpack BND4 {file.path}")
+  bnd = file.open_as(SoulsFormats.BND4Reader, "BND4", stage_dir=config.stage1_dir)
+  df = unpack_binder(bnd, file, config)
   return df
 
 
-def unpack_bxf4(bhd_path: PathLike, dst_dir: PathLike, data=None, **kwargs: Unpack[Unpackargs]) -> pl.DataFrame:
-  bhd_path, dst_dir = Path(bhd_path), Path(dst_dir)
-  # print(f"Unpack BHF4 {bhd_path}")
-  logger.info(f"Unpack BHF4 {bhd_path}")
-  bdt_path = Path(str(bhd_path).replace("bhd", "bdt"))
+def unpack_bxf4(file: File, config: UnpackConfig) -> pl.DataFrame:
+  """
+  bhd4 and bdt4 are a pair of files that contains multiple files
+  """
+  bhd_path = config.stage1_dir.joinpath(file.path)
+  bdt_path = bhd_path.parent.joinpath(f"{bhd_path.stem}.{bhd_path.suffix.replace('bhd', 'bdt')}")
+  logger.info(f"Unpack BXF4 {bhd_path}")
   bxf = SoulsFormats.BXF4Reader(str(bhd_path), str(bdt_path))
-  df = unpack_binder(bxf, dst_dir, bhd_path, **kwargs)
+  file.fmt_executing = "BXF4"
+  df = unpack_binder(bxf, file, config)
   return df
 
 
-def unpack_dcx(path: PathLike, dst_dir: PathLike, data=None, **kwargs: Unpack[Unpackargs]) -> pl.DataFrame:
-  # print(f"Unpack DCX {path}")
-  logger.info(f"Unpack DCX {path}")
-  path, dst_dir = Path(path), Path(dst_dir)
+def unpack_dcx(file: File, config: UnpackConfig) -> pl.DataFrame:
+  """
+  dcx is a compressed file that contains a inner file
+  """
+  logger.info(f"Unpack DCX {file.path}")
   compression = SoulsFormats.DCX.Type.Unknown
-  if data:
-    # print("csharp_bytes from data")
-    (csharp_bytes, compression) = SoulsFormats.DCX.Decompress(data, compression)
-  else:
-    # print("csharp_bytes from path")
-    (csharp_bytes, compression) = SoulsFormats.DCX.Decompress(str(path), compression)
-  if kwargs.get("save_dcx_res", False):
-    dst_dir.mkdir(parents=True, exist_ok=True)
-    dst_path = dst_dir.joinpath(path.stem)
-    System.IO.File.WriteAllBytes(str(dst_path), csharp_bytes)
-  df = unpack(path, dst_dir, data=csharp_bytes, **kwargs)
+  data = file.get_data(stage_dir=config.stage1_dir)
+  (csharp_bytes, compression) = SoulsFormats.DCX.Decompress(data, compression)
+  file.fmt_executing = "DCX"
+  inner_file = File(file.path, csharp_bytes, parent_hash=None)
+  df = unpack(inner_file, config)
   return df
 
+dict_unpack_formats = {
+  "DCX": unpack_dcx,
+  "BND4": unpack_bnd4,
+  "BHF4": unpack_bxf4,
+  "TPF": unpack_tpf,
+  "FMG": unpack_fmg,
+}
 
-def unpack(path: PathLike, dst_dir: PathLike, data = None, **kwargs: Unpack[Unpackargs]) -> pl.DataFrame | None:
-  format = _utils.get_format(data, path)
-  data = bytes_to_clr(data, path=path)
-  match format:
-    case "DCX":
-      return unpack_dcx(path, dst_dir, data=data, **kwargs)
-    case "BND4":
-      return unpack_bnd4(path, dst_dir, data=data, **kwargs)
-    case "BHF4":
-      return unpack_bxf4(path, dst_dir, data=data, **kwargs)
-    case "BDF4":
-      # appear with BHF4
-      return None
-    case "TPF":
-      return unpack_tpf(path, dst_dir, data=data, **kwargs)
-    case "FMG":
-      return unpack_fmg(path, dst_dir, data=data, **kwargs)
-    case _:
-      # logger.warning(f"[ unpack ] Unknown format: {format}, path: {path}")
-      # print(f"[ unpack ] Unknown format: {format}, path: {path}")
-      return None
+# %%
+dict_suffix_mapping = {
+  'entryfilelist': "ENFL",
+}
+def get_format_from_bytes(arr: bytes):
+  magic = arr[:4].decode('ascii', errors='ignore')
+  if magic in [
+    "AISD", # .aisd
+    "BDF3", "BDF4", # .bdt
+    "BHF3", "BHF4", # .bhd
+    "BND3", "BND4", # .bnd
+    "DDS ", # .dds
+    "DLSE", # .dlse
+    "\0BRD", "DRB\0", # .drb
+    "EDF\0", # .edf
+    "ELD\0", # .eld
+    "ENFL", # .entryfilelist
+    "FSSL", # .esd
+    "EVD\0", # .evd
+    "DFPN", # .nfd
+    "TAE ", # .tae
+    "TPF\0", # .tpf
+    "#BOM", # .txt
+  ]:
+    if magic == '\0BRD': magic = "DRB\0"
+    if magic == "#BOM": magic = "TXT"
+    return magic.upper().strip(' \0')
+  if magic[:3] in [
+    "FEV", # .fev
+    "FSB", # .fsb
+    "GFX", # .gfx
+  ]:
+    return magic[:3]
+  if arr[:6] == b"FLVER\0": # .flver
+    return "FLVER"
+  if arr[1:4] == b"Lua": # .lua
+    return "LUA"
+  if arr[0xC:0xC+0xE] == b"ITLIMITER_INFO": # .itl
+    return "ITL"
+  if arr[0x2C:0x2C+4] == b"MTD ": # .mtd
+    return "MTD"
+  if arr[1:4] == b"PNG": # .png
+    return "PNG"
+  if arr[0x28:0x28+4] == b"SIB ": # .sib
+    return "SIB"
+  if arr[:5] == b"<?xml": # .xml
+    return "XML"
+  return None
 
+def get_format(byte_array: bytearray, path: PathLike, detect_length = 0x40) -> tuple[str, str]:
+  if byte_array is None:
+    with open(path, "rb") as f:
+      byte_array = f.read(detect_length)
+  byte_array = System.Array[System.Byte](byte_array)
+  if len(byte_array) > detect_length:
+    byte_array = System.ArraySegment[System.Byte](byte_array, 0, min(detect_length, len(byte_array))).ToArray()
+  if SoulsFormats.DCX.Is(byte_array):
+    # TODO: should DCX be transparent
+    guessed_ext = "DCX"
+  else:
+    guessed_ext = str(SoulsFormats.SFUtil.GuessExtension(byte_array))[1:].upper()
+  if guessed_ext in ["BDT", "BHD", "BND"]:
+    guessed_ext += chr(byte_array[3])
+  path_ext = Path(path).suffix[1:].upper()
+  path_ext = dict_suffix_mapping.get(path_ext.lower(), path_ext)
+  return guessed_ext, path_ext
 
-
+def unpack(file: File, config: UnpackConfig) -> pl.DataFrame | None:
+  format = file.format(stage_dir=config.stage1_dir)
+  print("unpacking", file.path, format)
+  if format in dict_unpack_formats:
+    return dict_unpack_formats[format](file, config)
 
 # %%
 import sys
 UnpackHelper.NativeLibrary.AddToPath(sys.path)
 UnpackHelper.Helper.LoadOodle()
+
+# %%
+unpack_config = UnpackConfig(Path(stage1_dir), Path(stage2_dir), force=False)
+dfs = []
+for i, path in enumerate(Path(stage1_dir).joinpath("asset/aeg/aeg001").glob('*')):
+  path = path.relative_to(stage1_dir)
+  df = unpack(File(path), unpack_config)
+  dfs.append(df)
+  if i == 5: break
+df = pl.concat(dfs)
 
 # %%
 
@@ -295,7 +421,7 @@ for k in range(bucket_size):
   df.write_csv(f"logs/trace_{k}.csv")
 
 # %%
-file = "map/m10/m10_00_00_00/l10_00_00_00.hkxbhd"
+file = "sfx/sfxbnd_c2120.ffxbnd.dcx"
 path = Path(f"{stage1_dir}").joinpath(file)
 dst_file = Path(f"{stage2_dir}").joinpath(file)
 dst_dir = dst_file.parent
