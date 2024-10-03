@@ -3,7 +3,7 @@
 pub mod db;
 pub mod sync;
 pub mod save;
-pub mod weapon;
+pub mod equips;
 pub mod downloader;
 pub mod cache;
 
@@ -45,7 +45,7 @@ async fn get_basic_info(state: tauri::State<'_, Arc<MyState>>, selected: Option<
 }
 
 #[tauri::command(rename_all = "snake_case")]
-async fn get_equipped_weapon_info(state: tauri::State<'_, Arc<MyState>>) -> Result<crate::weapon::WeaponInfos, String> {
+async fn get_equipped_weapon_info(state: tauri::State<'_, Arc<MyState>>) -> Result<crate::equips::WeaponInfos, String> {
   let selected = state.get_selected();
   state.get_equipped_weapon_info(selected).map_err(|e| format!("state.get_equipped_weapon_info: {}", e))
 }
@@ -57,6 +57,7 @@ async fn get_icons(sender: tauri::State<'_, mpsc::Sender<downloader::Task>>, ico
   for icon_id in icon_ids {
     let icon_path = format!("tauri-app/assets/icons/icon_{:05}.png", icon_id);
     if !Path::new(&icon_path).exists() {
+      info!("icon_path does not exist: {}", icon_path);
       sender.send(downloader::Task {
         path: icon_path.clone(),
         url: format!("https://assets.erdb.workers.dev/icons/armaments/{:05}/menu", icon_id)

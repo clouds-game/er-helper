@@ -35,7 +35,7 @@ impl Downloader {
         if let Some(task) = task {
           // download task
           if let Err(e) = download_file(&task.url, &task.path) {
-            eprintln!("Failed to download {}: {}", task.url, e);
+            error!("Failed to download {}: {}", task.url, e);
           }
 
           state.lock().unwrap().set.remove(&task.url);
@@ -55,7 +55,7 @@ impl Downloader {
 }
 
 fn download_file(url: &str, path: &str) -> Result<(), Box<dyn std::error::Error>> {
-  println!("Downloading from {} to {}", url, path);
+  info!("Downloading from {} to {}", url, path);
   let buffer = reqwest::blocking::get(url)?.bytes()?;
   if let Some(parent) = Path::new(path).parent() {
     std::fs::create_dir_all(parent)?;

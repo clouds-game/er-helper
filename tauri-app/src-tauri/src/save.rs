@@ -120,9 +120,9 @@ impl From<(&Profile, &UserDataX)> for PlayerMetaInfo {
       boss,
       grace,
       attrs: [player.vigor, player.mind, player.endurance, player.strength, player.dexterity, player.intelligence, player.faith, player.arcane],
-      hp: [userdata.player_game_data.hp, userdata.player_game_data.max_hp, userdata.player_game_data.base_max_hp],
-      fp: [userdata.player_game_data.fp, userdata.player_game_data.max_fp, userdata.player_game_data.base_max_fp],
-      sp: [userdata.player_game_data.sp, userdata.player_game_data.max_sp, userdata.player_game_data.base_max_sp],
+      hp: [player.hp, player.max_hp, player.base_max_hp],
+      fp: [player.fp, player.max_fp, player.base_max_fp],
+      sp: [player.sp, player.max_sp, player.base_max_sp],
 
     }
   }

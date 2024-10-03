@@ -21,7 +21,7 @@ const props = defineProps<{
 
 const load_weapons = async (...weapon: Weapon[]) => {
   try {
-    const icon_ids = Array.from(new Set(weapon.filter(w => w.image == undefined && w.icon_id != undefined).map(w => w.icon_id)))
+    const icon_ids = Array.from(new Set(weapon.filter(w => w.image == undefined).map(w => w.icon_id ?? 0)))
     if (icon_ids.length == 0) {
       return
     }
@@ -31,7 +31,7 @@ const load_weapons = async (...weapon: Weapon[]) => {
     const icon_map = new Map(icons.map((icon, i) => [icon_ids[i], icon]))
     weapon.forEach(w => {
       if (w.image == undefined) {
-        w.image = icon_map.get(w.icon_id);
+        w.image = icon_map.get(w.icon_id ?? 0);
       }
     })
   } catch (e) {
@@ -55,10 +55,10 @@ const { t } = useI18n({
 
 <template>
   <div>
-    <div class="grid grid-cols-6" @mouseover="showTitle = true" @mouseleave="showTitle=false">
+    <div class="grid grid-cols-5" @mouseover="showTitle = true" @mouseleave="showTitle=false">
       <div v-for="weapon in weapons" :key="weapon.id" class="m-1 bg-gray-200">
         <img class="rounded-full w-full h-auto" :src="weapon.image" :alt="weapon.name" />
-        <div class="text-xs text-center" v-if="showTitle">{{ t(`db.weapon.name.${weapon.id}`) }}</div>
+        <div class="text-xs text-center" v-if="showTitle">{{ t(`db.weapon.name.${weapon.id}`, `${weapon.id}`) }}</div>
       </div>
     </div>
   </div>

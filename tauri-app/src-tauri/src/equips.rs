@@ -8,7 +8,7 @@ pub struct WeaponInfo {
 }
 
 impl WeaponInfo {
-  pub fn new(id: &u32) -> Self {
+  pub fn new(id: u32) -> Self {
     let level = id % 100;
     let id = id - level;
     Self {
@@ -22,20 +22,21 @@ impl WeaponInfo {
 pub struct WeaponInfos {
   pub lefthand: Vec<WeaponInfo>,
   pub righthand: Vec<WeaponInfo>,
+  pub arrows: Vec<WeaponInfo>,
+  pub bolts: Vec<WeaponInfo>,
 }
 
 impl From<&EquippedArmamentsAndItems> for WeaponInfos {
   fn from(equipped: &EquippedArmamentsAndItems) -> Self {
-    let mut lefthand = Vec::new();
-    let mut righthand = Vec::new();
-    lefthand.push(WeaponInfo::new(&equipped.left_hand_armament1));
-    lefthand.push(WeaponInfo::new(&equipped.left_hand_armament2));
-    lefthand.push(WeaponInfo::new(&equipped.left_hand_armament3));
-    righthand.push(WeaponInfo::new(&equipped.right_hand_armament1));
-    righthand.push(WeaponInfo::new(&equipped.right_hand_armament2));
-    righthand.push(WeaponInfo::new(&equipped.right_hand_armament3));
+    let lefthand = [equipped.left_hand_armament1, equipped.left_hand_armament2, equipped.left_hand_armament3];
+    let righthand = [equipped.right_hand_armament1, equipped.right_hand_armament2, equipped.right_hand_armament3];
+    let arrows = [equipped.arrows1, equipped.arrows2];
+    let bolts = [equipped.bolts1, equipped.bolts2];
     Self {
-      lefthand, righthand,
+      lefthand: lefthand.into_iter().map(WeaponInfo::new).collect(),
+      righthand: righthand.into_iter().map(WeaponInfo::new).collect(),
+      arrows: arrows.into_iter().map(WeaponInfo::new).collect(),
+      bolts: bolts.into_iter().map(WeaponInfo::new).collect(),
     }
   }
 }
@@ -61,7 +62,7 @@ mod test {
     let config = setup();
     let save = er_save_lib::Save::from_path(config.file).unwrap();
     let equipped = &save.user_data_x[0].equipped_armaments_and_items;
-    let weapon_info = crate::weapon::WeaponInfos::from(equipped);
+    let weapon_info = crate::equips::WeaponInfos::from(equipped);
     println!("weapon_info: {:?}", weapon_info);
   }
 }

@@ -111,14 +111,14 @@ const role_status = computed(() => ({
     </div>
     <div class="m-1 col-span-2">
       <div>{{ t("ui.equips", 20) }}</div>
-      <Weapons :weapons="state.equipped_weapon_infos.righthand" />
-      <Weapons :weapons="state.equipped_weapon_infos.lefthand" />
+      <Weapons :weapons="state.equipped_weapon_infos.righthand.concat(state.equipped_weapon_infos.bolts)" />
+      <Weapons :weapons="state.equipped_weapon_infos.lefthand.concat(state.equipped_weapon_infos.arrows)" />
     </div>
     <div class="m-1 col-span-2">
       <div>{{ t("game.main_attribute") }}</div>
       <div class="bg-gray-300 p-2 rounded shadow">
         <div class="flex justify-between" v-for="attr in (['vigor', 'mind', 'endurance', 'strength', 'dexterity', 'intelligence', 'faith', 'arcane'] as const)">
-          <span>{{ t(`game.attr_${attr}`) }}:</span> <span>{{ add_points[attr] }}</span>
+          <span>{{ t(`game.attr_${attr}`, `${attr}`) }}:</span> <span>{{ add_points[attr] }}</span>
         </div>
       </div>
     </div>

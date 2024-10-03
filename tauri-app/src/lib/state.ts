@@ -34,13 +34,11 @@ export const useState = defineStore("state", () => {
     fp: array_new(3),
     sp: array_new(3),
   })
-  const equipped_weapon_infos = ref<{
-    lefthand: WeaponInfo[];
-    righthand: WeaponInfo[];
-  }>
-  ({
-    lefthand: [],
-    righthand: [],
+  const equipped_weapon_infos = ref({
+    lefthand: [] as WeaponInfo[],
+    righthand: [] as WeaponInfo[],
+    arrows: [] as WeaponInfo[],
+    bolts: [] as WeaponInfo[],
   })
   const time = ref({
     queried: new Date(0),
@@ -76,6 +74,8 @@ export const useState = defineStore("state", () => {
       equipped_weapon_infos.value = await invoke("get_equipped_weapon_info")
       equipped_weapon_infos.value.lefthand = equipped_weapon_infos.value.lefthand.map(update_weapon_info)
       equipped_weapon_infos.value.righthand = equipped_weapon_infos.value.righthand.map(update_weapon_info)
+      equipped_weapon_infos.value.arrows = equipped_weapon_infos.value.arrows.map(update_weapon_info)
+      equipped_weapon_infos.value.bolts = equipped_weapon_infos.value.bolts.map(update_weapon_info)
     } catch (e) {
       console.error(e)
     }
