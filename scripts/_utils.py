@@ -35,7 +35,7 @@ NameMaps = {
   }
 
 
-def UnrootBNDPath(path: PathLike):
+def UnrootBNDPath(path: PathLike) -> tuple[str, str | None]:
   path = str(path)
   for root in path_roots:
     if path.startswith(root):

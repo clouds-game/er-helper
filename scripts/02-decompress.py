@@ -184,7 +184,7 @@ def unpack_fmg(file: File, config: UnpackConfig) -> pl.DataFrame:
       # TODO: jsonline like writer
       json.dump(entries, f, indent=2, ensure_ascii=False)
     logger.info(f"[FMG] Unpack {path} to {target_path}")
-  return create_df(file, [Metadata(dst_path, "", fmt_from_bytes="JSON")])
+  return create_df(file, [Metadata(dst_path, None, fmt_from_bytes="JSON")])
 
 
 def unpack_tpf(file: File, config: UnpackConfig) -> pl.DataFrame:
@@ -218,7 +218,10 @@ def unpack_binder(binder: SoulsFormats.BinderReader, src_file: File, config: Unp
     # target_path = dst_dir.joinpath(f"{str(file.Name).split('\\')[-1]}")
     (dst_path, root) = _utils.UnrootBNDPath(file.Name)
     if root is None:
-      dst_path = Path(src_file.path).parent.joinpath(dst_path)
+      if dst_path.startswith("N:"):
+        dst_path = Path(src_file.path).parent.joinpath(str(file.Name).split('\\')[-1])
+      else:
+        dst_path = Path(src_file.path).parent.joinpath(dst_path)
     if data is None:
       logger.error(f"[{path.name}] Failed to read {file.Name}")
       continue
@@ -230,7 +233,7 @@ def unpack_binder(binder: SoulsFormats.BinderReader, src_file: File, config: Unp
     meta.append(Metadata(dst_path, file.Name, data.Length, fmt_from_bytes=inner_file.format()))
     df_child = unpack(inner_file, config)
     if df_child is not None:
-      dfs.append(df)
+      dfs.append(df_child)
       continue
     if not config.just_trace:
       target_path = Path(config.stage2_dir).joinpath(dst_path)
@@ -257,7 +260,7 @@ def unpack_bxf4(file: File, config: UnpackConfig) -> pl.DataFrame:
   bhd4 and bdt4 are a pair of files that contains multiple files
   """
   bhd_path = config.stage1_dir.joinpath(file.path)
-  bdt_path = bhd_path.parent.joinpath(f"{bhd_path.stem}.{bhd_path.suffix.replace('bhd', 'bdt')}")
+  bdt_path = bhd_path.parent.joinpath(f"{bhd_path.stem}{bhd_path.suffix.replace('bhd', 'bdt')}")
   logger.info(f"Unpack BXF4 {bhd_path}")
   bxf = SoulsFormats.BXF4Reader(str(bhd_path), str(bdt_path))
   file.fmt_executing = "BXF4"
@@ -348,7 +351,7 @@ def get_format(byte_array: bytearray, path: PathLike, detect_length = 0x40) -> t
   else:
     guessed_ext = str(SoulsFormats.SFUtil.GuessExtension(byte_array))[1:].upper()
   if guessed_ext in ["BDT", "BHD", "BND"]:
-    guessed_ext += chr(byte_array[3])
+    guessed_ext = "".join([chr(byte_array[i]) for i in range(4)])
   path_ext = Path(path).suffix[1:].upper()
   path_ext = dict_suffix_mapping.get(path_ext.lower(), path_ext)
   return guessed_ext, path_ext
@@ -367,11 +370,11 @@ UnpackHelper.Helper.LoadOodle()
 # %%
 unpack_config = UnpackConfig(Path(stage1_dir), Path(stage2_dir), force=False)
 dfs = []
-for i, path in enumerate(Path(stage1_dir).joinpath("asset/aeg/aeg001").glob('*')):
+for i, path in enumerate(Path(stage1_dir).joinpath("menu/hi").glob('*.*')):
   path = path.relative_to(stage1_dir)
   df = unpack(File(path), unpack_config)
   dfs.append(df)
-  if i == 5: break
+dfs = [x for x in dfs if x is not None]
 df = pl.concat(dfs)
 
 # %%
