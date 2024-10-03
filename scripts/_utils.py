@@ -2,7 +2,7 @@ from os import PathLike
 from pathlib import Path
 
 path_roots = [
-  "N:/GR/data/INTERROOT_win64/",
+  "N:\\GR\\data\\INTERROOT_win64\\",
 ]
 
 NameMaps = {

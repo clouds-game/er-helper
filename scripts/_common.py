@@ -10,6 +10,7 @@ import re, json, tomllib
 
 def get_logger(name: str, *, level: int = logging.INFO, filename: str | None = None) -> logging.Logger:
   logger = logging.getLogger(name)
+  logger.handlers.clear()
   logger.setLevel(level)
 
   if filename is not None:

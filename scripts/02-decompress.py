@@ -76,48 +76,39 @@ for file in param_src_dir.glob('*.param'):
 from typing import TypedDict, Unpack
 class Unpackargs(TypedDict):
   just_trace: bool
+  save_dcx_res: bool
 
-def hash_path(path: PathLike, src_hash: str|None = None) -> str:
-  if src_hash:
-    to_hash = src_hash + str(path)
-  else:
-    to_hash = str(path)
-  return hash(to_hash)
+def hash_path(path: PathLike) -> str:
+  import hashlib
+  data = Path(path).as_posix().encode('utf-8')
+  return hashlib.sha256(data).hexdigest()
 
 def create_new_df() -> pl.DataFrame:
-  df = pl.DataFrame({
-    "src": pl.Series([], dtype=pl.String),
-    "src_hash": pl.Series([], dtype=pl.Int64),
-    "dst": pl.Series([], dtype=pl.String),
-    "dst_hash": pl.Series([], dtype=pl.Int64),
-    "extra": pl.Series([], dtype=pl.String),
-  })
+  df = pl.DataFrame(schema={"src": pl.String, "src_hash": pl.String, "dst": pl.String, "dst_hash": pl.String, "extra": pl.String})
   return df
+
+def get_relative_path(path: PathLike, bases: list[PathLike]) -> Path:
+  for base in bases:
+    if Path(path).is_relative_to(base):
+      return Path(path).relative_to(base)
+  return Path(path)
+
+def add_rows_to_df(df: pl.DataFrame, rows: list[tuple[PathLike, PathLike, str|None]]):
+  data = []
+  for row in rows:
+    src = get_relative_path(Path(row[0]), [stage1_dir, stage2_dir])
+    dst = get_relative_path(Path(row[1]), [stage2_dir])
+    data.append([src.as_posix(), hash_path(src), dst.as_posix(), hash_path(dst), row[2]])
+  df_t = pl.DataFrame(data, schema=["src", "src_hash", "dst", 'dst_hash', 'extra'], orient='row')
+  df.vstack(df_t, in_place=True)
+
+def add_row_to_df(df: pl.DataFrame, src: PathLike, dst: PathLike, extra: str|None = None):
+  add_rows_to_df(df, [(src, dst, extra)])
 
 def create_df(src: PathLike, dst: PathLike, extra: str|None = None) -> pl.DataFrame:
   df = create_new_df()
   add_row_to_df(df, src, dst, extra)
   return df
-
-def add_rows_to_df(df: pl.DataFrame, rows: list[tuple[PathLike, PathLike, str|None]]):
-  data = {
-    "src": [str(row[0]) for row in rows],
-    "src_hash": [hash_path(row[0]) for row in rows],
-    "dst": [str(row[1]) for row in rows],
-    "dst_hash": [hash_path(row[1]) for row in rows],
-    "extra": [str(row[2]) for row in rows],
-  }
-  df.vstack(pl.DataFrame(data), in_place=True)
-
-def add_row_to_df(df: pl.DataFrame, src: PathLike, dst: PathLike, extra: str|None = None):
-  row = {
-    "src": str(src),
-    "src_hash": hash_path(src),
-    "dst": str(dst),
-    "dst_hash": hash_path(dst),
-    "extra": extra,
-  }
-  df.vstack(pl.DataFrame(row), in_place=True)
 
 def bytes_to_clr(data: bytes | System.Array[System.Byte], *, path: PathLike | None = None):
   if data is None:
@@ -127,7 +118,7 @@ def bytes_to_clr(data: bytes | System.Array[System.Byte], *, path: PathLike | No
   return System.Array[System.Byte](data)
 
 def unpack_fmg(path: PathLike, dst_dir: PathLike, data=None, **kwargs: Unpack[Unpackargs]) -> pl.DataFrame:
-  print(f"Unpack FMG {path}")
+  # print(f"Unpack FMG {path}")
   logger.info(f"Unpack FMG {path}")
   path, dst_dir = Path(path), Path(dst_dir)
   data = bytes_to_clr(data, path=path)
@@ -143,7 +134,7 @@ def unpack_fmg(path: PathLike, dst_dir: PathLike, data=None, **kwargs: Unpack[Un
 
 
 def unpack_tpf(path: PathLike, dst_dir: PathLike, data=None, **kwargs: Unpack[Unpackargs]) -> pl.DataFrame:
-  print(f"Unpack TPF {path}")
+  # print(f"Unpack TPF {path}")
   logger.info(f"Unpack TPF {path}")
   path, dst_dir = Path(path), Path(dst_dir)
   # dst_dir = dst_dir.joinpath(path.stem.replace('.', '-'))
@@ -167,8 +158,12 @@ def unpack_binder(binder: SoulsFormats.BinderReader, dst_dir: PathLike, path: Pa
   df = create_new_df()
   for file in binder.Files:
     data = binder.ReadFile(file)
-    # (sub_path, root) = _utils.UnrootBNDPath(file.Name)
-    target_path = dst_dir.joinpath(f"{str(file.Name).split('\\')[-1]}")
+    # target_path = dst_dir.joinpath(f"{str(file.Name).split('\\')[-1]}")
+    (sub_path, root) = _utils.UnrootBNDPath(file.Name)
+    if root:
+      target_path = Path(stage2_dir).joinpath(sub_path)
+    else:
+      target_path = dst_dir.joinpath(sub_path)
     if data is None:
       logger.error(f"[{path.name}] Failed to read {file.Name}")
       continue
@@ -185,10 +180,8 @@ def unpack_binder(binder: SoulsFormats.BinderReader, dst_dir: PathLike, path: Pa
 
 
 def unpack_bnd4(path: PathLike, dst_dir: PathLike, data=None, **kwargs: Unpack[Unpackargs]) -> pl.DataFrame:
-  # 这里有个问题 bnd4文件名是包含路径的 直接根据路径来存
-  # 还是只取单纯的文件名  根据提供的路径来存储(目前是这种)
   path, dst_dir = Path(path), Path(dst_dir)
-  print(f"Unpack BND4 {path}")
+  # print(f"Unpack BND4 {path}")
   logger.info(f"Unpack BND4 {path}")
   data = bytes_to_clr(data, path=path)
   bnd = SoulsFormats.BND4Reader(data)
@@ -198,7 +191,7 @@ def unpack_bnd4(path: PathLike, dst_dir: PathLike, data=None, **kwargs: Unpack[U
 
 def unpack_bxf4(bhd_path: PathLike, dst_dir: PathLike, data=None, **kwargs: Unpack[Unpackargs]) -> pl.DataFrame:
   bhd_path, dst_dir = Path(bhd_path), Path(dst_dir)
-  print(f"Unpack BHF4 {bhd_path}")
+  # print(f"Unpack BHF4 {bhd_path}")
   logger.info(f"Unpack BHF4 {bhd_path}")
   bdt_path = Path(str(bhd_path).replace("bhd", "bdt"))
   bxf = SoulsFormats.BXF4Reader(str(bhd_path), str(bdt_path))
@@ -207,16 +200,20 @@ def unpack_bxf4(bhd_path: PathLike, dst_dir: PathLike, data=None, **kwargs: Unpa
 
 
 def unpack_dcx(path: PathLike, dst_dir: PathLike, data=None, **kwargs: Unpack[Unpackargs]) -> pl.DataFrame:
-  print(f"Unpack DCX {path}")
+  # print(f"Unpack DCX {path}")
   logger.info(f"Unpack DCX {path}")
   path, dst_dir = Path(path), Path(dst_dir)
   compression = SoulsFormats.DCX.Type.Unknown
   if data:
-    print("csharp_bytes from data")
+    # print("csharp_bytes from data")
     (csharp_bytes, compression) = SoulsFormats.DCX.Decompress(data, compression)
   else:
-    print("csharp_bytes from path")
+    # print("csharp_bytes from path")
     (csharp_bytes, compression) = SoulsFormats.DCX.Decompress(str(path), compression)
+  if kwargs.get("save_dcx_res", False):
+    dst_dir.mkdir(parents=True, exist_ok=True)
+    dst_path = dst_dir.joinpath(path.stem)
+    System.IO.File.WriteAllBytes(str(dst_path), csharp_bytes)
   df = unpack(path, dst_dir, data=csharp_bytes, **kwargs)
   return df
 
@@ -251,28 +248,85 @@ import sys
 UnpackHelper.NativeLibrary.AddToPath(sys.path)
 UnpackHelper.Helper.LoadOodle()
 
+# %%
 
+def trace_files(relative_files: list[PathLike], progress: bool = True) -> pl.DataFrame:
+  if progress:
+    import tqdm
+    bar = tqdm.tqdm(total=len(relative_files), unit='file', desc='Trace')
+  df = create_new_df()
+  unknown_files = []
+  for file in relative_files:
+    if progress: bar.update(1)
+
+    path = Path(f"{stage1_dir}").joinpath(file)
+    dst_file = Path(f"{stage2_dir}").joinpath(file)
+    dst_dir = dst_file.parent
+    df_t = unpack(path, dst_dir, just_trace=True, save_dcx_res=False)
+    if df_t is not None:
+      df.vstack(df_t, in_place=True)
+    else:
+      unknown_files.append(file.as_posix())
+
+  df_data = [(file, file, None) for file in unknown_files]
+  add_rows_to_df(df, df_data)
+  return df
+
+
+from collections import defaultdict
 src_dir = Path(f"{stage1_dir}")
-# menu_dst_dir = Path(f"{stage2_dir}/menu")
-df = create_new_df()
-for file in list(src_dir.rglob('*')):
-  print(file)
-  if file.is_dir():
-    continue
+allfiles = [file for file in list(src_dir.rglob('*')) if file.is_file()]
+
+
+bucket = defaultdict(list)
+bucket_size = 8
+for file in allfiles:
   relative_path = file.relative_to(stage1_dir)
-  dst_dir = Path(f"{stage2_dir}").joinpath(relative_path).parent
-  # df_t = unpack(file, dst_dir, just_trace=False)
-  df_t = unpack(file, dst_dir, just_trace=True)
-  if df_t is not None:
-    df.vstack(df_t, in_place=True)
-df.with_columns(
-  suffix = pl.col('dst').str.split('.').list.last(),
-).group_by('suffix').agg(
-  len = pl.col('dst').count(),
-  dst = pl.col('dst').last(),
-).with_columns(
-  dst = pl.col('dst').str.split('\\').list.last()
-)
+  key = int(hash_path(relative_path), 16) % bucket_size
+  bucket[key].append(relative_path)
+for k in range(bucket_size):
+  files = bucket[k]
+  files.sort()
+  if os.path.exists(f"logs/trace_{k}.csv"):
+    logger.warning(f"Skipping bucket_{k}, remove logs/trace_{k}.csv to force trace")
+    continue
+  logger.info(f"Tracing bucket {k}")
+  df = trace_files(files)
+  df.write_csv(f"logs/trace_{k}.csv")
+
+# %%
+file = "map/m10/m10_00_00_00/l10_00_00_00.hkxbhd"
+path = Path(f"{stage1_dir}").joinpath(file)
+dst_file = Path(f"{stage2_dir}").joinpath(file)
+dst_dir = dst_file.parent
+df = unpack(path, dst_dir, just_trace=False, save_dcx_res=True)
+df
+
+# df_suffix = df.with_columns(
+#   suffix = pl.col('dst').str.split('.').list.last(),
+# ).group_by('suffix').agg(
+#   len = pl.col('dst').count(),
+#   dst = pl.col('dst').last(),
+# ).with_columns(
+#   dst = pl.col('dst').str.split('\\').list.last()
+# )
+# df_unknown_suffix = pl.DataFrame(unknown_files, schema=["path"], orient='row').with_columns(
+#   suffix = pl.col('path').str.split('.').list.slice(1).list.join('.'),
+# ).group_by('suffix').agg(
+#   len = pl.col('path').count(),
+#   dst = pl.col('path').last(),
+# )
+# df_suffix
+
+
+# %%
+src_dir = Path(f"{stage1_dir}")
+allfiles = list(src_dir.rglob('*'))
+allfiles = [file for file in allfiles if file.is_file()]
+print(len(allfiles))
+df = pl.read_parquet("scripts/res/unpack_stage1.parquet")
+print(len(df))
+# %%
 
 
 
