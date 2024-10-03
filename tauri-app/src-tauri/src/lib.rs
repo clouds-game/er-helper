@@ -58,10 +58,10 @@ async fn get_icons(sender: tauri::State<'_, mpsc::Sender<downloader::Task>>, ico
     let icon_path = format!("tauri-app/assets/icons/icon_{:05}.png", icon_id);
     if !Path::new(&icon_path).exists() {
       info!("icon_path does not exist: {}", icon_path);
-      sender.send(downloader::Task {
-        path: icon_path.clone(),
-        url: format!("https://assets.erdb.workers.dev/icons/armaments/{:05}/menu", icon_id)
-      }).ok();
+      // sender.send(downloader::Task {
+      //   path: icon_path.clone(),
+      //   url: format!("https://assets.erdb.workers.dev/icons/armaments/{:05}/menu", icon_id)
+      // }).ok();
     }
     let data = std::fs::read(icon_path).unwrap_or_default();
     let icon = base64::engine::general_purpose::STANDARD.encode(data);
