@@ -111,8 +111,8 @@ const role_status = computed(() => ({
     </div>
     <div class="m-1 col-span-2">
       <div>{{ t("ui.equips", 20) }}</div>
-      <Weapons :weapons="state.equipped_weapon_infos.righthand.concat(state.equipped_weapon_infos.bolts)" />
-      <Weapons :weapons="state.equipped_weapon_infos.lefthand.concat(state.equipped_weapon_infos.arrows)" />
+      <Weapons :weapons="state.equipped_weapon_infos.righthand.concat(state.equipped_weapon_infos.arrows)" />
+      <Weapons :weapons="state.equipped_weapon_infos.lefthand.concat(state.equipped_weapon_infos.bolts)" />
     </div>
     <div class="m-1 col-span-2">
       <div>{{ t("game.main_attribute") }}</div>

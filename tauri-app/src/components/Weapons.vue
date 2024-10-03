@@ -6,6 +6,9 @@ import { WeaponInfo } from '../lib/state';
 import { useI18n } from 'vue-i18n';
 import { WeaponDB } from '../lib/db';
 
+const EMPTY_IMAGE = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=='
+const EMPTY_IDS = [110000, 4294967200]
+
 export interface Weapon {
   id: number
   level?: number
@@ -20,6 +23,11 @@ const props = defineProps<{
 }>()
 
 const load_weapons = async (...weapon: Weapon[]) => {
+  weapon.forEach(w => {
+    if (w.image == undefined && EMPTY_IDS.includes(w.id)) {
+      w.image = EMPTY_IMAGE
+    }
+  })
   try {
     const icon_ids = Array.from(new Set(weapon.filter(w => w.image == undefined).map(w => w.icon_id ?? 0)))
     if (icon_ids.length == 0) {
@@ -47,6 +55,14 @@ watch(() => props.weapons, async (new_weapons) => {
 
 const showTitle = ref(false)
 
+const weapon_name = (id: number) => {
+  if (EMPTY_IDS.includes(id)) {
+    return ""
+  } else {
+    return t(`db.weapon.name.${id}`, ''+id)
+  }
+}
+
 const { t } = useI18n({
   messages: WeaponDB.i18n()
 })
@@ -58,7 +74,7 @@ const { t } = useI18n({
     <div class="grid grid-cols-5" @mouseover="showTitle = true" @mouseleave="showTitle=false">
       <div v-for="weapon in weapons" :key="weapon.id" class="m-1 bg-gray-200">
         <img class="rounded-full w-full h-auto" :src="weapon.image" :alt="weapon.name" />
-        <div class="text-xs text-center" v-if="showTitle">{{ t(`db.weapon.name.${weapon.id}`, `${weapon.id}`) }}</div>
+        <div class="text-xs text-center" v-if="showTitle">{{ weapon_name(weapon.id) }}</div>
       </div>
     </div>
   </div>
