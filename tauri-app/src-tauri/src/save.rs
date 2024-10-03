@@ -43,7 +43,13 @@ pub struct PlayerMetaInfo {
   pub death: u32,
   pub last_grace_id: u32,
   pub boss: u32,
-  pub graces: u32,
+  pub grace: u32,
+
+  /// in order `vigor, mind, endurance, strength, dexterity, intelligence, faith, arcane`
+  pub attrs: [u32; 8],
+  pub hp: [u32; 3],
+  pub fp: [u32; 3],
+  pub sp: [u32; 3],
 }
 
 macro_rules! check_eq {
@@ -63,6 +69,12 @@ pub struct Events {
   pub bosses: HashMap<u32, bool>,
 }
 
+impl std::fmt::Debug for Events {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.debug_struct("Events").field("events", &self.events.len()).field("graces", &self.graces.len()).field("bosses", &self.bosses.len()).finish()
+  }
+}
+
 impl TryFrom<&UserDataX> for Events {
   type Error = anyhow::Error;
 
@@ -70,12 +82,12 @@ impl TryFrom<&UserDataX> for Events {
   fn try_from(userdata: &UserDataX) -> Result<Self> {
     let events = userdata.event_flags.clone();
     let mut graces = HashMap::new();
-    for i in GRACES.iter() {
+    for i in GRACES.data.iter() {
       let flag = events[i.offset as usize] & i.bit_mask != 0;
       graces.insert(i.id, flag);
     }
     let mut bosses = HashMap::new();
-    for i in BOSS.iter() {
+    for i in BOSS.data.iter() {
       let flag = events[i.offset as usize] & i.bit_mask != 0;
       bosses.insert(i.id, flag);
     }
@@ -90,34 +102,43 @@ impl From<(&Profile, &UserDataX)> for PlayerMetaInfo {
     check_eq!(profile.runes_memory, userdata.player_game_data.runes_memory);
 
     let events = Events::try_from(userdata).unwrap();
-    let graces = events.graces.iter().filter(|(_, &v)| v).count() as u32;
+    let grace = events.graces.iter().filter(|(_, &v)| v).count() as u32;
     let boss = events.bosses.iter().filter(|(_, &v)| v).count() as u32;
+
+    let player = &userdata.player_game_data;
 
     Self {
       active: false,
       name: profile.character_name.clone(),
       level: profile.level,
       duration: profile.seconds_played,
-      runes: userdata.player_game_data.runes,
+      runes: player.runes,
       total_runes: profile.runes_memory,
       map_id: u32::from_le_bytes(profile.map_id),
       death: userdata.total_deaths_count,
       last_grace_id: userdata.last_rested_grace,
       boss,
-      graces,
+      grace,
+      attrs: [player.vigor, player.mind, player.endurance, player.strength, player.dexterity, player.intelligence, player.faith, player.arcane],
+      hp: [player.hp, player.max_hp, player.base_max_hp],
+      fp: [player.fp, player.max_fp, player.base_max_fp],
+      sp: [player.sp, player.max_sp, player.base_max_sp],
+
     }
   }
 }
 
 impl MyState {
+  pub fn get_meta_info(&self) -> Result<MetaInfo> {
+    self.get_from_cache_or_save::<MetaInfo>()
+  }
+
   pub fn get_selected(&self) -> usize {
     let selected = self.selected.load(std::sync::atomic::Ordering::SeqCst);
     if selected == usize::MAX {
-      let save = self.save.lock().unwrap();
-      let Some(save) = Option::as_ref(&save) else {
+      let Ok(meta_info) = self.get_meta_info() else {
         return 0;
       };
-      let meta_info = MetaInfo::from(save);
       meta_info.active_slot
     } else {
       selected
@@ -125,33 +146,21 @@ impl MyState {
   }
 
   pub fn get_basic_info(&self, selected: usize) -> Result<crate::BasicInfo> {
-    let save = self.save.lock().unwrap();
-    let Some(save) = Option::as_ref(&save) else {
-      anyhow::bail!("no save loaded");
-    };
-    let meta_info = MetaInfo::from(save);
+    let meta_info = self.get_meta_info()?;
     let player_info = &meta_info.player_infos[selected];
     Ok(crate::BasicInfo {
-      nickname: "miao".to_string(),
       role_name: player_info.name.to_string(),
       duration: player_info.duration as u64,
       steam_id: meta_info.steam_id.to_string(),
-    })
-  }
-
-  pub fn get_player_info(&self, selected: usize) -> Result<crate::BasicPlayerInfo> {
-    let save = self.save.lock().unwrap();
-    let Some(save) = Option::as_ref(&save) else {
-      anyhow::bail!("no save loaded");
-    };
-    let meta_info = MetaInfo::from(save);
-    let player_info = &meta_info.player_infos[selected];
-    Ok(crate::BasicPlayerInfo {
       level: player_info.level as _,
       rune: player_info.runes as _,
       boss: player_info.boss as _,
-      grace: player_info.graces as _,
+      grace: player_info.grace as _,
       death: player_info.death as _,
+      attrs: player_info.attrs,
+      hp: player_info.hp,
+      fp: player_info.fp,
+      sp: player_info.sp,
     })
   }
 }

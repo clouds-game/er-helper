@@ -61,3 +61,35 @@ for path in glob.glob("libs/UnpackHelper/src/UXM/**/*.cs", recursive=True):
       f.write(data)
 
 # %%
+patch = """
+diff --git a/StudioUtils/StudioUtils.csproj b/StudioUtils/StudioUtils.csproj
+index 4bc4ef7..344d5a9 100644
+--- a/StudioUtils/StudioUtils.csproj
++++ b/StudioUtils/StudioUtils.csproj
+@@ -1,7 +1,7 @@
+ <Project Sdk="Microsoft.NET.Sdk">
+
+     <PropertyGroup>
+-        <TargetFramework>net8.0-windows</TargetFramework>
++        <TargetFramework>net8.0</TargetFramework>
+         <ImplicitUsings>enable</ImplicitUsings>
+         <Nullable>enable</Nullable>
+         <LangVersion>11</LangVersion>
+diff --git a/WitchyFormats/WitchyFormats.csproj b/WitchyFormats/WitchyFormats.csproj
+index 3c67687..14d1bf3 100644
+--- a/WitchyFormats/WitchyFormats.csproj
++++ b/WitchyFormats/WitchyFormats.csproj
+@@ -1,7 +1,7 @@
+ <Project Sdk="Microsoft.NET.Sdk">
+
+   <PropertyGroup>
+-    <TargetFramework>net8.0-windows</TargetFramework>
++    <TargetFramework>net8.0</TargetFramework>
+     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+     <IsPackable>false</IsPackable>
+     <Title>WitchyFormats</Title>
+"""
+import subprocess
+subprocess.run(["git", "apply"], input=patch.encode("utf-8"), cwd="vendor/WitchyBND")
+
+# %%

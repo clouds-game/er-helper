@@ -6,7 +6,7 @@ import sys
 pythonnet.load("coreclr")
 # dotnet publish vendor/pythonnet-stub-generator/csharp/PythonNetStubGenerator
 sys.path.extend(str(Path(i).absolute()) for i in [
-  "vendor/pythonnet-stub-generator/csharp/PythonNetStubGenerator/bin/Debug/netstandard2.0/publish",
+  "vendor/pythonnet-stub-generator/csharp/PythonNetStubGenerator/bin/Release/netstandard2.0/publish",
   "libs/UnpackHelper/bin/Debug/net8.0",
 ])
 import clr

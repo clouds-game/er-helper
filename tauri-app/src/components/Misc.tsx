@@ -1,27 +1,5 @@
 import { defineComponent } from "vue"
 import { useI18n } from "vue-i18n"
-import { WeaponInfo } from "../lib/state"
-
-const i18n = {
-  en: {
-    steam_id: "Steam ID",
-    role_name: "Role Name",
-    duration: "Duration",
-    swtich: "Switch Role",
-  },
-  cn: {
-    steam_id: "Steam ID",
-    role_name: "当前角色",
-    duration: "游戏时长",
-    swtich: "切换角色",
-  },
-  ja: {
-    steam_id: "Steam ID",
-    role_name: "役職",
-    duration: "ゲーム時間",
-    swtich: "役職を切り替える",
-  },
-}
 
 export const Banner = defineComponent<{
   content?: string,
@@ -47,17 +25,17 @@ export const PlayerCard = defineComponent<{
   duration: number,
   steam_id: string,
 }>((props) => {
-  const { t: $t, locale } = useI18n({ messages: i18n })
+  const { t: $t, locale } = useI18n()
   return () => <div class="flex">
     <div>
       <img src="https://via.placeholder.com/80" alt="player avatar" class="rounded-full" />
     </div>
     <div class="flex flex-col justify-around flex-auto ml-2">
-      <div class="flex justify-between"><span class="text-2xl">{props.nickname}</span> <span class="text-sm">{ $t('steam_id') }: {props.steam_id}</span></div>
-      <div class="flex justify-between"><span>{ $t('role_name') }: {props.role_name}</span></div>
+      <div class="flex justify-between"><span class="text-2xl">{props.nickname}</span> <span class="text-sm">{ $t('ui.steam_id') }: {props.steam_id}</span></div>
+      <div class="flex justify-between"><span>{ $t('ui.role_name') }: {props.role_name}</span></div>
       <div class="flex justify-between">
-        <span>{ $t('duration') }: {(props.duration / 3600).toFixed(1)}h</span>
-        <span><button>{ $t('swtich') }</button><ButtonLanguage class="ml-1" current={locale.value} /></span>
+        <span>{ $t('ui.duration') }: {(props.duration / 3600).toFixed(1)}h</span>
+        <span><button>{ $t('ui.swtich') }</button><ButtonLanguage class="ml-1" current={locale.value as any} /></span>
       </div>
     </div>
   </div>
@@ -70,9 +48,9 @@ export const NumberInfo = defineComponent<{
   value: number,
   title: string,
 }>((props) => {
-  return () => <div class="flex flex-col items-center bg-gray m-1 p-1">
-    <span class="text-2xl">{props.value}</span>
-    <span>{props.title}</span>
+  return () => <div class="flex flex-col items-center text-center bg-gray m-1 p-1">
+    <span class="text-2xl font-bold">{props.value}</span>
+    <span class="test-xs">{props.title}</span>
   </div>
 }, {
   name: "NumberInfo",
@@ -85,7 +63,7 @@ export const NumberInfoBanner = defineComponent<{
 }>((props) => {
   return () => <div class="text-center bg-gray m-1 p-3">
     <i18n-t keypath={props.text_keypath} plural={props.value}>
-      <span class="text-2xl text-red">{props.value}</span>
+      <span class="text-2xl font-bold text-red">{props.value}</span>
     </i18n-t>
   </div>
 }, {
@@ -110,34 +88,29 @@ export const ButtonLanguage = defineComponent<{
   props: ["current"],
 })
 
-export const WeaponInfoBanner = defineComponent<{
-  weapon_infos : WeaponInfo[]
+export const HealthBar = defineComponent<{
+  title: string,
+  status: {
+    current: number,
+    max: number,
+    base: number,
+  },
+  color: 'red' | 'green' | 'blue'
 }>((props) => {
-  return () => <div class="m-1 grid grid-cols-3">
-    {props.weapon_infos.map((weapon, index) => (
-        <WeaponInfoBlock
-          // key={index}
-          name={weapon.name}
-          icon_data={weapon.icon_data}
-        />
-      ))}
-  </div>
+  const percent = props.status.current / props.status.max * 100
+  const style = {
+    red: "bg-red-400",
+    green: "bg-green-400",
+    blue: "bg-blue-400",
+  }
+  return () => <tr class="m-1 p-1">
+    <td class="w-1 text-nowrap"><span>{props.title}</span></td>
+    <td class="p-1"><div class="bg-gray-200 h-1">
+      <div class={style[props.color]} style={{ width: `${percent}%`, height: "90%" }}></div>
+    </div></td>
+    <td class="text-right w-1 text-nowrap"><span>{props.status.current}/{props.status.max}</span></td>
+  </tr>
 }, {
-  name: "WeaponInfoBanner",
-  props: ["weapon_infos"],
+  name: "HealthBar",
+  props: ["title", "status", "color"]
 })
-
-export const WeaponInfoBlock = defineComponent<{
-  name: string,
-  icon_data: string,
-}>((props) => {
-  const base64Image = `data:image/png;base64,${props.icon_data}`;
-  return () => <div class="flex flex-col items-center bg-gray m-1 p-1">
-    <div>{props.name}</div>
-    <img src={base64Image} alt="weapon icon" class="rounded-full w-12 h-12" />
-  </div>
-}, {
-  name: "WeaponInfo",
-  props: ["name", 'icon_data'],
-}
-)
