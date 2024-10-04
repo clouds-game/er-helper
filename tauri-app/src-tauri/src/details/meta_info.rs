@@ -129,14 +129,10 @@ impl From<(&Profile, &UserDataX)> for PlayerMetaInfo {
 }
 
 impl MyState {
-  pub fn get_meta_info(&self) -> Result<MetaInfo> {
-    self.get_from_cache_or_save::<MetaInfo>()
-  }
-
   pub fn get_selected(&self) -> usize {
     let selected = self.selected();
     if selected == usize::MAX {
-      let new_selected = match self.get_meta_info() {
+      let new_selected = match self.decode_meta_info() {
         Ok(meta_info) => meta_info.active_slot,
         _ => 0,
       };
@@ -148,7 +144,7 @@ impl MyState {
   }
 
   pub fn get_basic_info(&self, selected: usize) -> Result<crate::BasicInfo> {
-    let meta_info = self.get_meta_info()?;
+    let meta_info = self.decode_meta_info()?;
     let player_info = &meta_info.player_infos[selected];
     Ok(crate::BasicInfo {
       role_name: player_info.name.to_string(),

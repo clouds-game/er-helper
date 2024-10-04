@@ -50,13 +50,13 @@ impl From<&UserDataX> for EquippedInfos {
 
 #[cfg(test)]
 mod test {
-  include!("_config.rs");
+  include!("../_config.rs");
 
   #[test]
   fn test_load_save() {
     let config = setup();
     let save = er_save_lib::Save::from_path(config.file).unwrap();
-    let equipped_info = crate::equips::EquippedInfos::from(&save.user_data_x[0]);
+    let equipped_info = super::EquippedInfos::from(&save.user_data_x[0]);
     println!("weapon_info: {:?}", equipped_info);
   }
 }

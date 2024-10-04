@@ -67,16 +67,17 @@ impl<K: PartialEq + Copy> Cache<K> {
     }
   }
 
-  pub fn insert<T: Send + Sync + 'static>(&self, version: K, value: T) {
-    if !self.check_version(version) { return }
+  pub fn insert<T: Send + Sync + 'static>(&self, version: K, value: T) -> bool {
+    if !self.check_version(version) { return false; }
     let type_id = std::any::TypeId::of::<T>();
     if self.get_version(type_id) == Some(version) {
-      return
+      return false
     }
     self.inner.insert(type_id, CacheItem {
       data: Box::new(value),
       version
     });
+    true
   }
 
   pub fn get_version(&self, type_id: TypeId) -> Option<K> {

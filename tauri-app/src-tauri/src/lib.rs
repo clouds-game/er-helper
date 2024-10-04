@@ -2,15 +2,14 @@
 
 pub mod db;
 pub mod sync;
-pub mod save;
-pub mod equips;
 pub mod downloader;
 pub mod cache;
+pub mod details;
 
 use std::{path::Path, sync::Arc};
 
 use downloader::Downloader;
-use equips::EquippedInfos;
+use details::EquippedInfos;
 use sync::{Metadata, MyState};
 
 use anyhow::Result;
@@ -48,7 +47,7 @@ async fn get_basic_info(state: tauri::State<'_, Arc<MyState>>, selected: Option<
 #[tauri::command(rename_all = "snake_case")]
 async fn get_equipped_info(state: tauri::State<'_, Arc<MyState>>) -> Result<EquippedInfos, String> {
   let selected = state.get_selected();
-  state.get_from_cache_or_userdatax::<EquippedInfos>(selected).map_err(|e| format!("state.get_equipped_weapon_info: {}", e))
+  state.decode_from_userdatax_from_cache::<EquippedInfos>(selected).map_err(|e| format!("state.get_equipped_weapon_info: {}", e))
 }
 
 #[tauri::command(rename_all = "snake_case")]

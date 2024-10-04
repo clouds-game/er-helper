@@ -92,7 +92,7 @@ impl MyState {
     ref_.map(|i| T::clone(&*i))
   }
 
-  pub fn get_from_cache_or_save<T: 'static + Clone + Send + Sync>(&self) -> Result<T>
+  pub fn decode_from_save_with_cache<T: 'static + Clone + Send + Sync>(&self) -> Result<T>
   where
     T: for<'a> TryFrom<&'a er_save_lib::Save>,
     for<'a> <T as TryFrom<&'a er_save_lib::Save>>::Error: std::fmt::Display,
@@ -114,7 +114,7 @@ impl MyState {
     Ok(value)
   }
 
-  pub fn get_from_cache_or_userdatax<T: 'static + Clone + Send + Sync>(&self, selected: usize) -> Result<T>
+  pub fn decode_from_userdatax_from_cache<T: 'static + Clone + Send + Sync>(&self, selected: usize) -> Result<T>
   where
     T: for<'a> TryFrom<&'a UserDataX>,
     for<'a> <T as TryFrom<&'a UserDataX>>::Error: std::fmt::Display,
