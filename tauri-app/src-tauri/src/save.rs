@@ -134,7 +134,7 @@ impl MyState {
   }
 
   pub fn get_selected(&self) -> usize {
-    let selected = self.selected.load(std::sync::atomic::Ordering::SeqCst);
+    let selected = self.selected();
     if selected == usize::MAX {
       let Ok(meta_info) = self.get_meta_info() else {
         return 0;

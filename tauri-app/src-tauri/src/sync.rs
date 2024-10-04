@@ -14,19 +14,29 @@ pub struct Metadata {
 pub struct MyState {
   pub save_path: PathBuf,
   pub metadata: Mutex<Metadata>,
-  pub selected: AtomicUsize,
+  pub _selected: AtomicUsize,
   pub save: Mutex<Option<er_save_lib::Save>>,
   pub loaded_time: AtomicU64,
-  pub cache: Cache,
+  pub cache: Cache<u64>,
+  pub selected_cache: Cache<(u64, usize)>,
 }
 
 impl MyState {
   pub fn new(path: PathBuf) -> Self {
     Self {
       save_path: path,
-      selected: AtomicUsize::new(usize::MAX),
+      _selected: AtomicUsize::new(usize::MAX),
       ..Default::default()
     }
+  }
+
+  pub fn selected(&self) -> usize {
+    self._selected.load(Ordering::SeqCst)
+  }
+  pub fn set_selected(&self, value: usize) {
+    let version = self.loaded_version();
+    self.selected_cache.set_key((version, value));
+    self._selected.store(value, Ordering::SeqCst)
   }
 
   pub fn sync_metadata(&self) -> Result<Metadata> {
@@ -46,13 +56,14 @@ impl MyState {
     let meta = self.sync_metadata()?;
     let save = er_save_lib::Save::from_path(&self.save_path)?;
     *self.save.lock().unwrap() = Some(save);
-    self.loaded_time.store(meta.last_modified, Ordering::Relaxed);
+    self.cache.set_key(meta.last_modified);
+    self.loaded_time.store(meta.last_modified, Ordering::SeqCst);
     Ok(())
   }
 
   pub fn is_loaded_latest(&self) -> bool {
     let Ok(meta) = self.sync_metadata() else { return false };
-    self.loaded_time.load(Ordering::Relaxed) > meta.last_modified
+    self.loaded_time.load(Ordering::SeqCst) > meta.last_modified
   }
 
   pub fn get_metadata(&self) -> Metadata {
@@ -60,19 +71,13 @@ impl MyState {
   }
 
   pub fn loaded_version(&self) -> u64 {
-    self.loaded_time.load(Ordering::Relaxed)
+    self.loaded_time.load(Ordering::SeqCst)
   }
 
   pub fn get_from_cache<T: 'static + Clone + Send>(&self) -> Option<T> {
     let current_version = self.loaded_version();
-    let (ref_, version) = self.cache.get::<T>(None);
-    if current_version > version {
-      None
-    } else if let Some(ref_) = ref_ {
-      Some(ref_.clone())
-    } else {
-      None
-    }
+    let (ref_, _) = self.cache.get::<T>(current_version);
+    ref_.map(|i| i.clone())
   }
 
   pub fn get_from_cache_or_save<T: 'static + Clone + Send + Sync>(&self) -> Result<T>
@@ -93,7 +98,7 @@ impl MyState {
       Ok(value) => value,
       Err(e) => anyhow::bail!("failed to convert save to {}: {}", std::any::type_name::<T>(), e),
     };
-    self.cache.insert(value.clone(), current_version);
+    self.cache.insert(current_version, value.clone());
     Ok(value)
   }
 }

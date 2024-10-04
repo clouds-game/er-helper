@@ -7,7 +7,7 @@ pub mod equips;
 pub mod downloader;
 pub mod cache;
 
-use std::{path::Path, sync::{mpsc, Arc}};
+use std::{path::Path, sync::Arc};
 
 use downloader::Downloader;
 use sync::{Metadata, MyState};
@@ -38,7 +38,7 @@ pub struct BasicInfo {
 #[tauri::command]
 async fn get_basic_info(state: tauri::State<'_, Arc<MyState>>, selected: Option<usize>) -> Result<BasicInfo, String> {
   if let Some(selected) = selected {
-    state.selected.store(selected, std::sync::atomic::Ordering::SeqCst);
+    state.set_selected(selected);
   };
   let selected = state.get_selected();
   state.get_basic_info(selected).map_err(|e| format!("state.get_basic_info: {}", e))
@@ -51,7 +51,8 @@ async fn get_equipped_info(state: tauri::State<'_, Arc<MyState>>) -> Result<crat
 }
 
 #[tauri::command(rename_all = "snake_case")]
-async fn get_icons(sender: tauri::State<'_, mpsc::Sender<downloader::Task>>, icon_ids: Vec<u32>) -> Result<Vec<String>, String> {
+async fn get_icons(icon_ids: Vec<u32>) -> Result<Vec<String>, String> {
+  //sender: tauri::State<'_, mpsc::Sender<downloader::Task>>,
   use base64::Engine as _;
   let mut icons = Vec::new();
   for icon_id in icon_ids {
