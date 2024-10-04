@@ -1,4 +1,3 @@
-use crate::{sync::MyState, Result};
 use er_save_lib::save::user_data_x::UserDataX;
 
 #[derive(Default, Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -23,7 +22,7 @@ impl WeaponInfo {
   }
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct EquippedInfos {
   pub lefthand: Vec<WeaponInfo>,
   pub righthand: Vec<WeaponInfo>,
@@ -46,18 +45,6 @@ impl From<&UserDataX> for EquippedInfos {
       bolts: bolts.into_iter().map(WeaponInfo::new).collect(),
       magics: userdata_x.equipped_spells.spellslot.iter().map(|spell| SpellInfo { id: spell.spell_id }).collect(),
     }
-  }
-}
-
-impl MyState {
-  pub fn get_equipped_info(&self, selected: usize) -> Result<EquippedInfos> {
-    let save = self.save.lock().unwrap();
-    let Some(save) = Option::as_ref(&save) else {
-      anyhow::bail!("no save loaded");
-    };
-    let userdata_x = &save.user_data_x[selected];
-    let equipped_infos = EquippedInfos::from(userdata_x);
-    Ok(equipped_infos)
   }
 }
 

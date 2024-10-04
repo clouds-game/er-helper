@@ -136,10 +136,12 @@ impl MyState {
   pub fn get_selected(&self) -> usize {
     let selected = self.selected();
     if selected == usize::MAX {
-      let Ok(meta_info) = self.get_meta_info() else {
-        return 0;
+      let new_selected = match self.get_meta_info() {
+        Ok(meta_info) => meta_info.active_slot,
+        _ => 0,
       };
-      meta_info.active_slot
+      self.set_selected(new_selected);
+      new_selected
     } else {
       selected
     }

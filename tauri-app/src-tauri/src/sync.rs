@@ -1,5 +1,7 @@
 use std::{path::PathBuf, sync::{atomic::{AtomicU64, AtomicUsize, Ordering}, Mutex}};
 
+use er_save_lib::save::user_data_x::UserDataX;
+
 use crate::{cache::Cache, Result};
 
 
@@ -56,8 +58,7 @@ impl MyState {
     let meta = self.sync_metadata()?;
     let save = er_save_lib::Save::from_path(&self.save_path)?;
     *self.save.lock().unwrap() = Some(save);
-    self.cache.set_key(meta.last_modified);
-    self.loaded_time.store(meta.last_modified, Ordering::SeqCst);
+    self.set_loaded_version(meta.last_modified);
     Ok(())
   }
 
@@ -73,11 +74,22 @@ impl MyState {
   pub fn loaded_version(&self) -> u64 {
     self.loaded_time.load(Ordering::SeqCst)
   }
+  pub fn set_loaded_version(&self, version: u64) {
+    self.cache.set_key(version);
+    self.selected_cache.set_key((version, self.selected()));
+    self.loaded_time.store(version, Ordering::SeqCst);
+  }
 
   pub fn get_from_cache<T: 'static + Clone + Send>(&self) -> Option<T> {
     let current_version = self.loaded_version();
     let (ref_, _) = self.cache.get::<T>(current_version);
-    ref_.map(|i| i.clone())
+    ref_.map(|i| T::clone(&*i))
+  }
+
+  pub fn get_from_selected_cache<T: 'static + Clone + Send>(&self, selected: usize) -> Option<T> {
+    let current_version = self.loaded_version();
+    let (ref_, _) = self.selected_cache.get::<T>((current_version, selected));
+    ref_.map(|i| T::clone(&*i))
   }
 
   pub fn get_from_cache_or_save<T: 'static + Clone + Send + Sync>(&self) -> Result<T>
@@ -99,6 +111,35 @@ impl MyState {
       Err(e) => anyhow::bail!("failed to convert save to {}: {}", std::any::type_name::<T>(), e),
     };
     self.cache.insert(current_version, value.clone());
+    Ok(value)
+  }
+
+  pub fn get_from_cache_or_userdatax<T: 'static + Clone + Send + Sync>(&self, selected: usize) -> Result<T>
+  where
+    T: for<'a> TryFrom<&'a UserDataX>,
+    for<'a> <T as TryFrom<&'a UserDataX>>::Error: std::fmt::Display,
+  {
+    if let Some(value) = self.get_from_selected_cache::<T>(selected) {
+      return Ok(value);
+    }
+    let current_version = self.loaded_version();
+    let current_selected = self.selected(); // TODO: support selected
+    if current_selected != std::usize::MAX && current_selected != selected {
+      error!(current_selected, selected, "selected mismatch");
+    }
+    let save = self.save.lock().unwrap();
+    let Some(save) = save.as_ref() else {
+      anyhow::bail!("no save loaded");
+    };
+    let Some(userdata_x) = save.user_data_x.get(selected) else {
+      anyhow::bail!("no userdata_x for selected: {}", selected);
+    };
+    info!("convert from userdata_x and save cache: {} (version: {}, selected: {})", std::any::type_name::<T>(), current_version, current_selected);
+    let value = match T::try_from(userdata_x) {
+      Ok(value) => value,
+      Err(e) => anyhow::bail!("failed to convert userdata_x to {}: {}", std::any::type_name::<T>(), e),
+    };
+    self.selected_cache.insert((current_version, current_selected), value.clone());
     Ok(value)
   }
 }
