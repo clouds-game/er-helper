@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core"
 import { defineStore } from "pinia"
-import { ref, watch } from "vue"
+import { reactive, ref, watch } from "vue"
 import { GoodsDB, WeaponDB } from './db'
 
 export interface WeaponInfo {
@@ -112,5 +112,26 @@ export const useState = defineStore("state", () => {
     nickname,
     update,
     update_equipped_items,
+  }
+})
+
+export const useAssets = defineStore("assets", () => {
+  // TODO: LRU of icons?
+  const icons = reactive(new Map<number, string>())
+  const EMPTY_IMAGE = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=='
+
+  const load_icons = async (icon_ids: (number | undefined)[]) => {
+    const to_load_ids = icon_ids.filter(id => id != null).filter(id => !icons.has(id))
+    const loaded_icons = await invoke<string[]>('get_icons', { icon_ids: Array.from(new Set(to_load_ids)) })
+    to_load_ids.forEach((id, i) => {
+      icons.set(id, loaded_icons[i])
+    })
+    return icon_ids.map(id => id != null ? icons.get(id) : undefined)
+  }
+
+  return {
+    icons,
+    EMPTY_IMAGE,
+    load_icons,
   }
 })
