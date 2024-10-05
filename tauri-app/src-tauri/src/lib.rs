@@ -9,7 +9,7 @@ pub mod details;
 use std::{path::Path, sync::Arc};
 
 use downloader::Downloader;
-use details::EquippedInfos;
+use details::{EquippedInfos, EventInfos};
 use sync::{Metadata, MyState};
 
 use anyhow::Result;
@@ -48,6 +48,12 @@ async fn get_basic_info(state: tauri::State<'_, Arc<MyState>>, selected: Option<
 async fn get_equipped_info(state: tauri::State<'_, Arc<MyState>>) -> Result<EquippedInfos, String> {
   let selected = state.get_selected();
   state.decode_from_userdatax_from_cache::<EquippedInfos>(selected).map_err(|e| format!("state.get_equipped_weapon_info: {}", e))
+}
+
+#[tauri::command(rename_all = "snake_case")]
+async fn get_events_info(state: tauri::State<'_, Arc<MyState>>) -> Result<EventInfos, String> {
+  let selected = state.get_selected();
+  state.decode_from_userdatax_from_cache::<EventInfos>(selected).map_err(|e| format!("state.get_equipped_weapon_info: {}", e))
 }
 
 #[tauri::command(rename_all = "snake_case")]
@@ -90,6 +96,7 @@ pub fn run<P: AsRef<Path>>(path: P) {
       get_metadata,
       get_basic_info,
       get_equipped_info,
+      get_events_info,
       get_icons,
     ])
     .run(tauri::generate_context!())

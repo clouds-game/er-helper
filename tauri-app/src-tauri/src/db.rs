@@ -12,6 +12,7 @@ pub struct Database<D, T> {
 pub type GraceDb = Database<Grace, Text>;
 pub type BossDb = Database<Boss, Text>;
 pub type WeaponDb = Database<Weapon, Text>;
+pub type GoodsDb = Database<Goods, Text>;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Text {
@@ -23,6 +24,7 @@ pub struct Text {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Grace {
   pub id: u32,
+  pub eventflag_id: u32,
   pub map_id: u32,
   pub block: u32,
   pub offset: u32,
@@ -32,6 +34,7 @@ pub struct Grace {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Boss {
   pub id: u32,
+  pub eventflag_id: u32,
   pub map_text_id: u32,
   pub block: u32,
   pub offset: u32,
@@ -48,10 +51,21 @@ pub struct Weapon {
   pub icon_path: String,
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct Goods {
+  pub id: u32,
+  #[serde(alias = "type")]
+  pub goods_type: String,
+  pub icon_id: u16,
+  #[serde(alias = "path")]
+  pub icon_path: String,
+}
+
 lazy_static!{
   pub static ref GRACES: GraceDb = serde_json::from_str(include_str!("../../assets/grace.out.json")).unwrap();
   pub static ref BOSS: BossDb = serde_json::from_str(include_str!("../../assets/boss.out.json")).unwrap();
   pub static ref WEAPON: WeaponDb = serde_json::from_str(include_str!("../../assets/weapon.out.json")).unwrap();
+  pub static ref GOODS: GoodsDb = serde_json::from_str(include_str!("../../assets/goods.out.json")).unwrap();
 }
 
 #[test]
@@ -59,4 +73,5 @@ fn test_load_db() {
   println!("graces: {:?}", GRACES.count);
   println!("boss: {:?}", BOSS.count);
   println!("weapon: {:?}", WEAPON.count);
+  println!("goods: {:?}", GOODS.count);
 }

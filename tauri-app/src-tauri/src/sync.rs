@@ -56,6 +56,7 @@ impl MyState {
 
   pub fn load_save(&self) -> Result<()> {
     let meta = self.sync_metadata()?;
+    info!("load_save: from {} to {}", self.loaded_version(), meta.last_modified);
     let save = er_save_lib::Save::from_path(&self.save_path)?;
     *self.save.lock().unwrap() = Some(save);
     self.set_loaded_version(meta.last_modified);
@@ -64,7 +65,7 @@ impl MyState {
 
   pub fn is_loaded_latest(&self) -> bool {
     let Ok(meta) = self.sync_metadata() else { return false };
-    self.loaded_time.load(Ordering::SeqCst) > meta.last_modified
+    self.loaded_time.load(Ordering::SeqCst) >= meta.last_modified
   }
 
   pub fn get_metadata(&self) -> Metadata {

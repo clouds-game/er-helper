@@ -1,8 +1,6 @@
-use std::collections::HashMap;
-
 use er_save_lib::{save::{user_data_10::Profile, user_data_x::UserDataX}, Save};
 
-use crate::{db::{BOSS, GRACES}, sync::MyState, Result};
+use crate::{details::events::Events, sync::MyState, Result};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct MetaInfo {
@@ -61,40 +59,6 @@ macro_rules! check_eq {
       }
     }
   };
-}
-
-pub struct Events {
-  pub events: Vec<u8>,
-  pub graces: HashMap<u32, bool>,
-  pub bosses: HashMap<u32, bool>,
-}
-
-impl std::fmt::Debug for Events {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    f.debug_struct("Events").field("events", &self.events.len()).field("graces", &self.graces.len()).field("bosses", &self.bosses.len()).finish()
-  }
-}
-
-impl TryFrom<&UserDataX> for Events {
-  type Error = anyhow::Error;
-
-  // #[instrument(skip(userdata))]
-  fn try_from(userdata: &UserDataX) -> Result<Self> {
-    let events = userdata.event_flags.clone();
-    let mut graces = HashMap::new();
-    for i in GRACES.data.iter() {
-      let flag = events[i.offset as usize] & i.bit_mask != 0;
-      graces.insert(i.id, flag);
-    }
-    let mut bosses = HashMap::new();
-    for i in BOSS.data.iter() {
-      let flag = events[i.offset as usize] & i.bit_mask != 0;
-      bosses.insert(i.id, flag);
-    }
-    Ok(Self {
-      events, graces, bosses,
-    })
-  }
 }
 
 impl From<(&Profile, &UserDataX)> for PlayerMetaInfo {

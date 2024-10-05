@@ -13,6 +13,7 @@ ui:
   swtich: "役職を切り替える"
 
 game:
+  boss: "BOSS"
   # https://eldenring-jp.wiki.fextralife.com/%E3%82%B9%E3%83%86%E3%83%BC%E3%82%BF%E3%82%B9
   status: "ステータス"
   level: "レベル"

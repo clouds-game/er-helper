@@ -18,7 +18,7 @@ export interface Weapon {
 }
 
 const props = defineProps<{
-  weapons: WeaponInfo[]
+  data: WeaponInfo[]
 }>()
 
 const load_weapons = async (...weapon: Weapon[]) => {
@@ -31,7 +31,7 @@ const load_weapons = async (...weapon: Weapon[]) => {
 
 const weapon_icons = ref<string[]>([])
 const weapons = ref<Weapon[]>([])
-watch(() => props.weapons, async (new_weapons) => {
+watch(() => props.data, async (new_weapons) => {
   weapons.value = new_weapons
   await load_weapons(...weapons.value)
 })

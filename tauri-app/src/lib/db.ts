@@ -6,10 +6,15 @@ import _GoodsSource from "../../assets/goods.out.json"
 
 export type Lang = 'engus' | 'jpnjp' | 'zhocn'
 export class Database<D extends IItem, T extends Text> {
-  constructor(public name: string, public source: ISource<D, T>) {}
+  id_cache = new Map<number, D>()
+  constructor(public name: string, public source: ISource<D, T>) {
+    for (const element of source.data) {
+      this.id_cache.set(element.id, element)
+    }
+  }
 
   get(id: number): D | undefined {
-    return this.source.data.find((d) => d.id === id)
+    return this.id_cache.get(id)
   }
 
   getText(id: number, lang: Lang): string | null {

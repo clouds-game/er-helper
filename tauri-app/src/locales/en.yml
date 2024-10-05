@@ -10,6 +10,7 @@ ui:
   duration: "Duration"
   swtich: "Switch Role"
 game:
+  boss: "BOSS"
   status: "Status"
   level: "Level"
   level_up: "Level Up"

@@ -1,20 +1,9 @@
 import { invoke } from "@tauri-apps/api/core"
 import { defineStore } from "pinia"
 import { reactive, ref, watch } from "vue"
-import { GoodsDB, WeaponDB } from './db'
+import { array_new, BossInfo, GraceInfo, MagicInfo, resolve_boss_info, resolve_goods_info, resolve_grace_info, resolve_weapon_info, WeaponInfo } from "./utils"
 
-export interface WeaponInfo {
-  id: number
-  level: number
-  icon_id?: number
-  wep_type?: number
-}
-export interface MagicInfo {
-  id: number
-  icon_id?: number
-}
-
-const array_new = (length: number) => Array.from({ length }, () => 0)
+export type { MagicInfo, WeaponInfo }
 
 export const useState = defineStore("state", () => {
   console.log("state store created")
@@ -45,13 +34,17 @@ export const useState = defineStore("state", () => {
     bolts: [] as WeaponInfo[],
     magics: [] as MagicInfo[],
   })
+  const events_info = ref({
+    boss: [] as BossInfo[],
+    grace: [] as GraceInfo[],
+  })
   const time = ref({
     queried: new Date(0),
     current: new Date(),
     latest: new Date(0),
   })
 
-  const update = async () => {
+  const update_basic_info = async () => {
     try {
       metadata.value = await invoke("get_metadata")
       basic_info.value = await invoke("get_basic_info")
@@ -65,33 +58,35 @@ export const useState = defineStore("state", () => {
     }
   }
 
-  const update_weapon_info = (w: WeaponInfo) => {
-    const weapon = WeaponDB.get(w.id)
-    if (weapon) {
-      w.icon_id = weapon.icon_id
-      w.wep_type = weapon.type
-    }
-    return w
-  }
-  const update_goods_info = (g: MagicInfo) => {
-    const goods = GoodsDB.get(g.id)
-    if (goods) {
-      g.icon_id = goods.icon_id
-    }
-    return g
-  }
-
   const update_equipped_items = async () => {
     try {
       equipped_info.value = await invoke("get_equipped_info")
-      equipped_info.value.lefthand = equipped_info.value.lefthand.map(update_weapon_info)
-      equipped_info.value.righthand = equipped_info.value.righthand.map(update_weapon_info)
-      equipped_info.value.arrows = equipped_info.value.arrows.map(update_weapon_info)
-      equipped_info.value.bolts = equipped_info.value.bolts.map(update_weapon_info)
-      equipped_info.value.magics = equipped_info.value.magics.map(update_goods_info)
+      equipped_info.value.lefthand = equipped_info.value.lefthand.map(resolve_weapon_info)
+      equipped_info.value.righthand = equipped_info.value.righthand.map(resolve_weapon_info)
+      equipped_info.value.arrows = equipped_info.value.arrows.map(resolve_weapon_info)
+      equipped_info.value.bolts = equipped_info.value.bolts.map(resolve_weapon_info)
+      equipped_info.value.magics = equipped_info.value.magics.map(resolve_goods_info)
     } catch (e) {
       console.error(e)
     }
+  }
+
+  const update_events_info = async () => {
+    try {
+      events_info.value = await invoke("get_events_info")
+      // events_info.value.boss = events_info.value.boss.map(resolve_boss_info)
+      // events_info.value.grace = events_info.value.grace.map(resolve_grace_info)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const update = async () => {
+    await Promise.all([
+      update_basic_info(),
+      update_equipped_items(),
+      update_events_info(),
+    ])
   }
 
   watch(() => metadata.value.last_modified, () => {
@@ -108,10 +103,13 @@ export const useState = defineStore("state", () => {
     metadata,
     basic_info,
     equipped_info,
+    events_info,
     time,
     nickname,
-    update,
+    update_basic_info,
     update_equipped_items,
+    update_events_info,
+    update,
   }
 })
 
@@ -122,10 +120,12 @@ export const useAssets = defineStore("assets", () => {
 
   const load_icons = async (icon_ids: (number | undefined)[]) => {
     const to_load_ids = icon_ids.filter(id => id != null).filter(id => !icons.has(id))
-    const loaded_icons = await invoke<string[]>('get_icons', { icon_ids: Array.from(new Set(to_load_ids)) })
-    to_load_ids.forEach((id, i) => {
-      icons.set(id, loaded_icons[i])
-    })
+    if (to_load_ids.length > 0) {
+      const loaded_icons = await invoke<string[]>('get_icons', { icon_ids: Array.from(new Set(to_load_ids)) })
+      to_load_ids.forEach((id, i) => {
+        icons.set(id, loaded_icons[i])
+      })
+    }
     return icon_ids.map(id => id != null ? icons.get(id) : undefined)
   }
 

@@ -8,6 +8,7 @@ import { useState } from './lib/state';
 import { useI18n } from 'vue-i18n';
 import Weapons from './components/Weapons.vue';
 import Magics from './components/Magics.vue';
+import Bosses from './components/Bosses.vue';
 
 const { t, locale } = useI18n()
 const state = useState()
@@ -15,10 +16,8 @@ const state = useState()
 let timer: number | undefined
 onMounted(async () => {
   state.update()
-  state.update_equipped_items()
   timer = setInterval(() => {
     state.update()
-    state.update_equipped_items()
   }, 3000)
   console.log(state.time.current)
   console.log(state.equipped_info)
@@ -109,12 +108,12 @@ const role_status = computed(() => ({
     </div>
     <div class="m-1 col-span-2">
       <div>{{ t("game.memory_slots", 6) }}</div>
-      <Magics :magics="state.equipped_info.magics" />
+      <Magics :data="state.equipped_info.magics" />
     </div>
     <div class="m-1 col-span-2">
       <div>{{ t("ui.equips", 20) }}</div>
-      <Weapons :weapons="state.equipped_info.righthand.concat(state.equipped_info.arrows)" />
-      <Weapons :weapons="state.equipped_info.lefthand.concat(state.equipped_info.bolts)" />
+      <Weapons :data="state.equipped_info.righthand.concat(state.equipped_info.arrows)" />
+      <Weapons :data="state.equipped_info.lefthand.concat(state.equipped_info.bolts)" />
     </div>
     <div class="m-1 col-span-2">
       <div>{{ t("game.main_attribute") }}</div>
@@ -123,6 +122,10 @@ const role_status = computed(() => ({
           <span>{{ t(`game.attr_${attr}`, `${attr}`) }}:</span> <span>{{ add_points[attr] }}</span>
         </div>
       </div>
+    </div>
+    <div class="m-1 col-span-4">
+      <div>{{ t("game.boss") }}</div>
+      <Bosses :data="[]" />
     </div>
   </div>
 </template>

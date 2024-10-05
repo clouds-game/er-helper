@@ -17,7 +17,7 @@ export interface Magic {
 }
 
 const props = defineProps<{
-  magics: MagicInfo[]
+  data: MagicInfo[]
 }>()
 
 const load_magics = async (...magics: Magic[]) => {
@@ -30,7 +30,7 @@ const load_magics = async (...magics: Magic[]) => {
 
 const magics_icons = ref<string[]>([])
 const magics = ref<Magic[]>([])
-watch(() => props.magics, async (new_value) => {
+watch(() => props.data, async (new_value) => {
   magics.value = new_value.filter(m => !EMPTY_IDS.includes(m.id))
   await load_magics(...magics.value)
 })
