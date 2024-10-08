@@ -17,7 +17,10 @@ const { t } = useI18n({
 </script>
 
 <template>
-  <div class="grid grid-auto-cols-8">
-    <div v-for="b in bosses">{{ t(`db.boss.name.${b.id}`) }}</div>
+  <div class="grid grid-cols-6">
+    <div class="m-1 bg-gray-200" v-for="b in bosses">
+      <div>{{ t(`db.boss.name.${b.id}`) }}</div>
+      <div class="text-gray text-sm">{{ t(`db.boss.map_name.${b.map_id}`) }}</div>
+    </div>
   </div>
 </template>

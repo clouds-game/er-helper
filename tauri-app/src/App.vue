@@ -125,7 +125,7 @@ const role_status = computed(() => ({
     </div>
     <div class="m-1 col-span-4">
       <div>{{ t("game.boss") }}</div>
-      <Bosses :data="[]" />
+      <Bosses :data="state.events_info.boss" />
     </div>
   </div>
 </template>

@@ -74,8 +74,8 @@ export const useState = defineStore("state", () => {
   const update_events_info = async () => {
     try {
       events_info.value = await invoke("get_events_info")
-      // events_info.value.boss = events_info.value.boss.map(resolve_boss_info)
-      // events_info.value.grace = events_info.value.grace.map(resolve_grace_info)
+      events_info.value.boss = events_info.value.boss.map(resolve_boss_info)
+      events_info.value.grace = events_info.value.grace.map(resolve_grace_info)
     } catch (e) {
       console.error(e)
     }
