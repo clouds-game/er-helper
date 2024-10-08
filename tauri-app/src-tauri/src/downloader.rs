@@ -39,6 +39,8 @@ impl Downloader {
           }
 
           state.lock().unwrap().set.remove(&task.url);
+        } else {
+          std::thread::sleep(std::time::Duration::from_millis(100));
         }
       }
     });
