@@ -150,7 +150,7 @@ def create_df(src: File, dst: list[Metadata]) -> pl.DataFrame:
     orient='row')
   return df
 
-def bytes_to_clr(data: bytes | System.Array[System.Byte], *, path: PathLike | None = None):
+def bytes_to_clr(data: bytes | System.Array[System.Byte] | None, *, path: PathLike | None = None):
   if data is None:
     if path:
       return System.IO.File.ReadAllBytes(str(path))
@@ -278,8 +278,18 @@ def unpack_dcx(file: File, config: UnpackConfig) -> pl.DataFrame:
   data = file.get_data(stage_dir=config.stage1_dir)
   (csharp_bytes, compression) = SoulsFormats.DCX.Decompress(data, compression)
   file.fmt_executing = "DCX"
-  inner_file = File(file.path, csharp_bytes, parent_hash=None)
-  df = unpack(inner_file, config)
+  inner_file = File(file.path, csharp_bytes, parent_hash=file.parent_hash)
+  inner_file.format()
+  df = None
+  if inner_file.fmt_from_data:
+    df = unpack(inner_file, config)
+  if df is None:
+    dst_path = Path(file.path).with_suffix("")
+    if not config.just_trace:
+      target_path = config.stage2_dir.joinpath(dst_path)
+      target_path.parent.mkdir(parents=True, exist_ok=True)
+      System.IO.File.WriteAllBytes(str(target_path), csharp_bytes)
+    df = create_df(file, [Metadata(dst_path, None, csharp_bytes.Length)])
   return df
 
 dict_unpack_formats = {
@@ -369,14 +379,16 @@ UnpackHelper.NativeLibrary.AddToPath(sys.path)
 UnpackHelper.Helper.LoadOodle()
 
 # %%
-unpack_config = UnpackConfig(Path(stage1_dir), Path(stage2_dir), force=False)
+unpack_config = UnpackConfig(Path(stage1_dir), None, force=False)
 dfs = []
-for i, path in enumerate(Path(stage1_dir).joinpath("menu/hi").glob('*.*')):
+for i, path in enumerate(Path(stage1_dir).joinpath("map").glob('*.*')):
+  print(path)
   path = path.relative_to(stage1_dir)
   df = unpack(File(path), unpack_config)
   dfs.append(df)
 dfs = [x for x in dfs if x is not None]
 df = pl.concat(dfs)
+df
 
 # %%
 
