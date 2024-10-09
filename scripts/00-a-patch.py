@@ -93,3 +93,20 @@ import subprocess
 subprocess.run(["git", "apply"], input=patch.encode("utf-8"), cwd="vendor/WitchyBND")
 
 # %%
+patch = """
+diff --git a/src/regulation/regulation.rs b/src/regulation/regulation.rs
+index 49e680e..011b355 100644
+--- a/src/regulation/regulation.rs
++++ b/src/regulation/regulation.rs
+@@ -213,6 +213,7 @@ impl Regulation {
+                 (11240023, 2001488),
+                 (11310027, 2025152),
+                 (11320031, 2019824),
++                (11410033, 2036288),
+             ])
+         })
+     }
+"""
+import subprocess
+subprocess.run(["git", "apply"], input=patch.encode("utf-8"), cwd="vendor/ER-Save-Lib")
+# %%

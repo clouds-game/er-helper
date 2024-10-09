@@ -4,7 +4,7 @@
   "identifier": "com.tauri-app.app",
   "build": {
     "beforeDevCommand": "yarn dev",
-    "devUrl": "http://localhost:1420",
+    "devUrl": "http://localhost:14200",
     "beforeBuildCommand": "yarn build",
     "frontendDist": "../dist"
   },

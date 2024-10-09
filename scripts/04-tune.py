@@ -53,7 +53,7 @@ result = {
   },
 }
 print(asset_name, df.height, df.unique('eventflag_id').height)
-with open(f"{ASSET_DIR}/{asset_name}.out.json", "w") as f:
+with open(f"{ASSET_DIR}/{asset_name}.out.json", "w", encoding='utf-8') as f:
   json.dump(result, f, ensure_ascii=False, separators=(',', ':'))
 
 # %%
@@ -90,7 +90,7 @@ result = {
     ) for lang in names.keys()
   },
 }
-with open(f"{ASSET_DIR}/{asset_name}.out.json", "w") as f:
+with open(f"{ASSET_DIR}/{asset_name}.out.json", "w", encoding='utf-8') as f:
   json.dump(result, f, ensure_ascii=False, separators=(',', ':'))
 
 # %%
@@ -113,7 +113,7 @@ result = {
   },
 }
 print(asset_name, df.height, df.unique('id').height)
-with open(f"{ASSET_DIR}/{asset_name}.out.json", "w") as f:
+with open(f"{ASSET_DIR}/{asset_name}.out.json", "w", encoding='utf-8') as f:
   json.dump(result, f, ensure_ascii=False, separators=(',', ':'))
 
 # %%
@@ -171,7 +171,7 @@ result = {
   },
 }
 print(asset_name, df.height, df.unique('id').height)
-with open(f"{ASSET_DIR}/{asset_name}.out.json", "w") as f:
+with open(f"{ASSET_DIR}/{asset_name}.out.json", "w", encoding='utf-8') as f:
   json.dump(result, f, ensure_ascii=False, separators=(',', ':'))
 
 # %%

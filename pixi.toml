@@ -8,7 +8,7 @@ platforms = ["linux-64", "osx-arm64", "win-64"]
 
 [tasks]
 init = { depends_on = ["init-git", "build-dotnet", "init-clr-typings", "init-tauri"] }
-init-git = "git submodule update --init --recursive && sed 's|${PWD}|'$(pwd)'|g' python.env.in | tee python.env && python scripts/00-a-patch.py"
+init-git = "git submodule update --init --recursive && python scripts/00-d-python_env.py && python scripts/00-a-patch.py"
 init-tauri = "yarn --cwd tauri-app install && pixi run python scripts/04-tune.py"
 # this only need in non-windows
 init-oodle = "bash scripts/00-c-init_oodle.sh"
