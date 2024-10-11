@@ -5,7 +5,7 @@ use er_save_lib::save::user_data_x::UserDataX;
 use crate::{cache::Cache, Result};
 
 
-#[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
 pub struct Metadata {
   pub exists: bool,
   pub last_modified: u64,

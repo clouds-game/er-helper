@@ -4,24 +4,10 @@ use er_save_lib::save::user_data_x::UserDataX;
 
 use crate::{db::{BOSS, GRACES}, Result};
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct BossInfo {
-  pub id: u32,
-  pub flag_id: u32,
-  pub defeated: bool,
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct GraceInfo {
-  pub id: u32,
-  pub flag_id: u32,
-  pub activated: bool,
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
 pub struct EventInfos {
-  boss: Vec<BossInfo>,
-  grace: Vec<GraceInfo>,
+  boss: Vec<u32>,
+  grace: Vec<u32>,
 }
 
 impl TryFrom<&UserDataX> for EventInfos {
@@ -31,19 +17,11 @@ impl TryFrom<&UserDataX> for EventInfos {
     let events = &value.event_flags;
     let boss = BOSS.data.iter()
       .filter(|i| events[i.offset as usize] & i.bit_mask != 0)
-      .map(|i| BossInfo {
-        id: i.id,
-        flag_id: i.eventflag_id,
-        defeated: true,
-      })
+      .map(|i| i.id)
       .collect::<Vec<_>>();
     let grace = GRACES.data.iter()
       .filter(|i| events[i.offset as usize] & i.bit_mask != 0)
-      .map(|i| GraceInfo {
-        id: i.id,
-        flag_id: i.eventflag_id,
-        activated: true,
-      })
+      .map(|i| i.id)
       .collect::<Vec<_>>();
     Ok(Self {
       boss, grace,

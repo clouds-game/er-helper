@@ -1,7 +1,7 @@
-import { invoke } from "@tauri-apps/api/core"
 import { defineStore } from "pinia"
 import { reactive, ref, watch } from "vue"
 import { array_new, BossInfo, GraceInfo, MagicInfo, resolve_boss_info, resolve_goods_info, resolve_grace_info, resolve_weapon_info, WeaponInfo } from "./utils"
+import { commands } from "./bindings"
 
 export type { MagicInfo, WeaponInfo }
 
@@ -46,8 +46,8 @@ export const useState = defineStore("state", () => {
 
   const update_basic_info = async () => {
     try {
-      metadata.value = await invoke("get_metadata")
-      basic_info.value = await invoke("get_basic_info")
+      metadata.value = await commands.getMetadata()
+      basic_info.value = await commands.getBasicInfo(null)
       if (nickname.value == null) {
         nickname.value = basic_info.value.role_name + '#' + basic_info.value.steam_id.slice(-4)
       }
@@ -60,7 +60,7 @@ export const useState = defineStore("state", () => {
 
   const update_equipped_items = async () => {
     try {
-      equipped_info.value = await invoke("get_equipped_info")
+      equipped_info.value = await commands.getEquippedInfo()
       equipped_info.value.lefthand = equipped_info.value.lefthand.map(resolve_weapon_info)
       equipped_info.value.righthand = equipped_info.value.righthand.map(resolve_weapon_info)
       equipped_info.value.arrows = equipped_info.value.arrows.map(resolve_weapon_info)
@@ -73,9 +73,9 @@ export const useState = defineStore("state", () => {
 
   const update_events_info = async () => {
     try {
-      events_info.value = await invoke("get_events_info")
-      events_info.value.boss = events_info.value.boss.map(resolve_boss_info)
-      events_info.value.grace = events_info.value.grace.map(resolve_grace_info)
+      const info = await commands.getEventsInfo()
+      events_info.value.boss = info.boss.map(resolve_boss_info)
+      events_info.value.grace = info.grace.map(resolve_grace_info)
     } catch (e) {
       console.error(e)
     }
@@ -121,7 +121,7 @@ export const useAssets = defineStore("assets", () => {
   const load_icons = async (icon_ids: (number | undefined)[]) => {
     const to_load_ids = icon_ids.filter(id => id != null).filter(id => !icons.has(id))
     if (to_load_ids.length > 0) {
-      const loaded_icons = await invoke<string[]>('get_icons', { icon_ids: Array.from(new Set(to_load_ids)) })
+      const loaded_icons = await commands.getIcons(Array.from(new Set(to_load_ids)))
       to_load_ids.forEach((id, i) => {
         icons.set(id, loaded_icons[i])
       })

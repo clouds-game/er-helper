@@ -8,20 +8,20 @@ export interface WeaponInfo {
 }
 export interface MagicInfo {
   id: number
-  type: GoodsType
+  type?: GoodsType
   icon_id?: number
 }
 export interface BossInfo {
   id: number
-  flag_id: number
+  flag_id?: number
   defeated?: boolean
   map_id?: number
 }
 export interface GraceInfo {
   id: number
-  flag_id: number
+  flag_id?: number
   activated?: boolean
-  map_id: number
+  map_id?: number
 }
 
 
@@ -43,16 +43,20 @@ export const resolve_goods_info = (g: MagicInfo) => {
   }
   return g
 }
-export const resolve_boss_info = (b: BossInfo) => {
-  const boss = BossDB.get(b.id)
+export const resolve_boss_info = (id: number) => {
+  const b = { id } as BossInfo;
+  const boss = BossDB.get(id)
   if (boss) {
+    b.flag_id = boss.eventflag_id
     b.map_id = boss.map_text_id
   }
   return b
 }
-export const resolve_grace_info = (g: GraceInfo) => {
+export const resolve_grace_info = (id: number) => {
+  const g = { id } as GraceInfo;
   const grace = GraceDB.get(g.id)
   if (grace) {
+    g.flag_id = grace.eventflag_id
     g.map_id = grace.map_id
   }
   return g

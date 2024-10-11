@@ -1,12 +1,12 @@
 use er_save_lib::save::user_data_x::UserDataX;
 
-#[derive(Default, Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Default, Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
 pub struct WeaponInfo {
   pub id: u32,
   pub level: u8,
 }
 
-#[derive(Default, Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Default, Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
 pub struct SpellInfo {
   pub id: u32,
 }
@@ -22,7 +22,7 @@ impl WeaponInfo {
   }
 }
 
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, specta::Type)]
 pub struct EquippedInfos {
   pub lefthand: Vec<WeaponInfo>,
   pub righthand: Vec<WeaponInfo>,

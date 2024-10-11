@@ -15,11 +15,12 @@ use sync::{Metadata, MyState};
 use anyhow::Result;
 
 #[tauri::command]
+#[specta::specta]
 async fn get_metadata(state: tauri::State<'_, Arc<MyState>>) -> Result<Metadata, String> {
   Ok(state.get_metadata())
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
 pub struct BasicInfo {
   pub steam_id: String,
   pub role_name: String,
@@ -36,6 +37,7 @@ pub struct BasicInfo {
 }
 
 #[tauri::command]
+#[specta::specta]
 async fn get_basic_info(state: tauri::State<'_, Arc<MyState>>, selected: Option<usize>) -> Result<BasicInfo, String> {
   if let Some(selected) = selected {
     state.set_selected(selected);
@@ -44,19 +46,22 @@ async fn get_basic_info(state: tauri::State<'_, Arc<MyState>>, selected: Option<
   state.get_basic_info(selected).map_err(|e| format!("state.get_basic_info: {}", e))
 }
 
-#[tauri::command(rename_all = "snake_case")]
+#[tauri::command]
+#[specta::specta]
 async fn get_equipped_info(state: tauri::State<'_, Arc<MyState>>) -> Result<EquippedInfos, String> {
   let selected = state.get_selected();
   state.decode_from_userdatax_from_cache::<EquippedInfos>(selected).map_err(|e| format!("state.get_equipped_weapon_info: {}", e))
 }
 
-#[tauri::command(rename_all = "snake_case")]
+#[tauri::command]
+#[specta::specta]
 async fn get_events_info(state: tauri::State<'_, Arc<MyState>>) -> Result<EventInfos, String> {
   let selected = state.get_selected();
   state.decode_from_userdatax_from_cache::<EventInfos>(selected).map_err(|e| format!("state.get_equipped_weapon_info: {}", e))
 }
 
-#[tauri::command(rename_all = "snake_case")]
+#[tauri::command]
+#[specta::specta]
 async fn get_icons(icon_ids: Vec<u32>) -> Result<Vec<String>, String> {
   //sender: tauri::State<'_, mpsc::Sender<downloader::Task>>,
   use base64::Engine as _;
@@ -77,6 +82,35 @@ async fn get_icons(icon_ids: Vec<u32>) -> Result<Vec<String>, String> {
   Ok(icons)
 }
 
+fn gen_hanlder() -> tauri_specta::Builder::<tauri::Wry> {
+  use tauri_specta::collect_commands;
+
+  tauri_specta::Builder::<tauri::Wry>::new()
+    .commands(collect_commands![
+      get_metadata,
+      get_basic_info,
+      get_equipped_info,
+      get_events_info,
+      get_icons,
+    ])
+}
+
+#[test]
+fn test_gen_handler() {
+  let builder = gen_hanlder();
+
+  let target_ts = concat!(env!("CARGO_MANIFEST_DIR"), "/../src/lib/bindings.ts");
+  println!("out bindings to {}", target_ts);
+
+  builder
+    .error_handling(tauri_specta::ErrorHandlingMode::Throw)
+    .export(
+      specta_typescript::Typescript::default()
+        .bigint(specta_typescript::BigIntExportBehavior::Number),
+      target_ts)
+    .expect("Failed to export typescript bindings");
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run<P: AsRef<Path>>(path: P) {
   info!("running on file: {}", path.as_ref().display());
@@ -92,13 +126,7 @@ pub fn run<P: AsRef<Path>>(path: P) {
     .plugin(tauri_plugin_shell::init())
     .manage(my_state)
     .manage(downloader_tx)
-    .invoke_handler(tauri::generate_handler![
-      get_metadata,
-      get_basic_info,
-      get_equipped_info,
-      get_events_info,
-      get_icons,
-    ])
+    .invoke_handler(gen_hanlder().invoke_handler())
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }
