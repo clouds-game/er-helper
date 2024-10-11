@@ -4,13 +4,13 @@ ui:
   defeated_boss: "討伐ボス数"
   unlocked_graces: "祝福"
 
-  status: "役職状態"
+  status: "キャラクターのステータス"
   equips: "装備"
 
   steam_id: "Steam ID"
-  role_name: "役職"
+  role_name: "キャラクター名"
   duration: "ゲーム時間"
-  swtich: "役職を切り替える"
+  swtich: "キャラクターを切り替える"
 
 game:
   boss: "BOSS"
@@ -41,3 +41,4 @@ game:
 message:
   death_times: "あなたは {0} 回死にました"
   update_at: "最終更新日： {0}"
+  save_file_not_found: "セーブファイルが見つかりません"

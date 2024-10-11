@@ -7,7 +7,7 @@ ui:
   equips: "Equips"
   steam_id: "Steam ID"
   role_name: "Role Name"
-  duration: "Duration"
+  duration: "Game Duration"
   swtich: "Switch Role"
 game:
   boss: "BOSS"
@@ -32,3 +32,4 @@ game:
 message:
   death_times: "You died for {0} time | You died for {0} times"
   update_at: "Last update at {0}"
+  save_file_not_found: "Save file not found"

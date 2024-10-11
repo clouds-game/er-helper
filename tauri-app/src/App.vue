@@ -87,8 +87,11 @@ const role_status = computed(() => ({
 
 <template>
   <div class="m-1 grid grid-cols-4">
-    <Banner class="col-span-4" :level="state.time.current.getTime() === state.time.latest.getTime() ? 'info' : 'warn'" v-if="state.time.latest">
+    <Banner class="col-span-4" :level="state.time.current.getTime() === state.time.latest.getTime() ? 'info' : 'warn'" v-if="state.time.latest.getTime()">
       {{ t('message.update_at', [latest_time_str]) }}
+    </Banner>
+    <Banner class="col-span-4" level="error" v-else>
+      {{ t('message.save_file_not_found') }}
     </Banner>
     <div class="col-span-4">
       <PlayerCard :nickname="state.nickname ?? ''" :role_name="basic_names.role_name" :duration="basic_names.duration" :steam_id="basic_names.steam_id" />

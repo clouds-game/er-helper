@@ -35,3 +35,4 @@ game:
 message:
   death_times: "你一共死亡 {0} 次"
   update_at: "最后更新于 {0}"
+  save_file_not_found: "未找到存档文件"
