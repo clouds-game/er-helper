@@ -1,14 +1,14 @@
 <script setup lang="ts">
 // This starter template is using Vue 3 <script setup> SFCs
 // Check out https://vuejs.org/api/sfc-script-setup.html#script-setup
-import { computed, onMounted, onUnmounted } from 'vue';
+import { computed, onMounted, onUnmounted } from 'vue'
 import { Banner, PlayerCard, NumberInfo, NumberInfoBanner, HealthBar } from './components/Misc'
-import * as timeago from 'timeago.js';
-import { useState } from './lib/state';
-import { useI18n } from 'vue-i18n';
-import Weapons from './components/Weapons.vue';
-import Magics from './components/Magics.vue';
-import Bosses from './components/Bosses.vue';
+import * as timeago from 'timeago.js'
+import { useState } from './lib/state'
+import { useI18n } from 'vue-i18n'
+import Weapons from './components/Weapons.vue'
+import Magics from './components/Magics.vue'
+import Bosses from './components/Bosses.vue'
 
 const { t, locale } = useI18n()
 const state = useState()
